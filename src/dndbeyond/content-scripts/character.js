@@ -439,7 +439,7 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Great Weapon Master");
-        settings_to_change["great-weapon-master"] = false;
+    //    settings_to_change["great-weapon-master"] = false;
     }
 
     // Charger Feat
@@ -463,7 +463,7 @@ function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, set
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Sharpshooter");
-        settings_to_change["sharpshooter"] = false;
+    //    settings_to_change["sharpshooter"] = false;
     }
     
     return to_hit;
