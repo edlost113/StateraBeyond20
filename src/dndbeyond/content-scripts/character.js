@@ -99,6 +99,10 @@ async function rollSkillCheck(paneClass) {
     // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
     if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency))
         roll_properties.d20 = "1d20min10";
+
+    if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+        roll_properties.d20 = "1d20min10";
+
     // Set Silver Tongue if Deception or Persuasion
     if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion"))
         roll_properties.d20 = "1d20min10";
@@ -259,6 +263,8 @@ function rollAbilityOrSavingThrow(paneClass, rollType) {
             }
         }
     }
+    if ((rollType == "ability") && (ability == "INT") && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+        roll_properties.d20 = "1d20min10";
     
     // Wizard - War Magic - Saving Throw Bonus
     if (character.hasClassFeature("Durable Magic") && character.getSetting("wizard-durable-magic", false) &&
@@ -439,7 +445,7 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Great Weapon Master");
-        settings_to_change["great-weapon-master"] = false;
+    //    settings_to_change["great-weapon-master"] = false;
     }
 
     // Charger Feat
@@ -463,7 +469,7 @@ function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, set
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Sharpshooter");
-        settings_to_change["sharpshooter"] = false;
+    //    settings_to_change["sharpshooter"] = false;
     }
     
     return to_hit;
@@ -1022,6 +1028,10 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
                 if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency))
                     roll_properties.d20 = "1d20min10";
+
+                if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+                    roll_properties.d20 = "1d20min10";
+
                 // Sorcerer: Clockwork Soul - Trance of Order
                 if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
                     roll_properties.d20 = "1d20min10";
