@@ -1846,9 +1846,6 @@ function getBackupRestoreSetting(name) {
 options_list["vtt-tab"]["createHTMLElement"] = createVTTTabSetting;
 options_list["vtt-tab"]["set"] = setVTTTabSetting;
 options_list["vtt-tab"]["get"] = getVTTTabSetting;
-options_list["discord-channels"]["createHTMLElement"] = createDiscordChannelsSetting;
-options_list["discord-channels"]["set"] = setDiscordChannelsSetting;
-options_list["discord-channels"]["get"] = getDiscordChannelsSetting;
 options_list["hotkeys-bindings"]["createHTMLElement"] = createHotkeysSetting;
 options_list["hotkeys-bindings"]["set"] = setHotkeysSetting;
 options_list["hotkeys-bindings"]["get"] = getHotkeysSetting;
