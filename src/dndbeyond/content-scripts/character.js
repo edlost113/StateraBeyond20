@@ -103,6 +103,9 @@ async function rollSkillCheck(paneClass) {
     if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
         roll_properties.d20 = "1d20min10";
 
+    if (ability == "CHA" && character.getSetting("Glibness", false))
+        roll_properties.d20 = "1d20min15";
+
     // Set Silver Tongue if Deception or Persuasion
     if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion"))
         roll_properties.d20 = "1d20min10";
@@ -1031,6 +1034,9 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
                 if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
                     roll_properties.d20 = "1d20min10";
+
+                if (ability == "CHA" && character.getSetting("Glibness", false))
+                    roll_properties.d20 = "1d20min15";
 
                 // Sorcerer: Clockwork Soul - Trance of Order
                 if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))

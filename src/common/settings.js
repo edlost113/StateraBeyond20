@@ -779,6 +779,12 @@ const character_settings = {
         "type": "special",
         "default": null
     },
+    "Glibness": {
+        "title": "Glibness",
+        "description": "Under the effect of the glibness spell",
+        "type": "bool",
+        "default": false
+    },
 }
 
 

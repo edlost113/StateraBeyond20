@@ -298,6 +298,10 @@ function populateCharacter(response) {
             e = createHTMLOption("cleric-circle-of-mortality", false, character_settings);
             options.append(e);
         }
+        if (Object.keys(response.classes).includes("Bard") || Object.keys(response.classes).includes("Warlock")) {
+            e = createHTMLOption("Glibness", false, character_settings);
+            options.append(e);
+        }
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);
