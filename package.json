@@ -20,15 +20,15 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/kakaroto/Beyond20.git"
+        "url": "git+https://github.com/Edlost113/StateraBeyond20.git"
     },
     "keywords": [],
     "author": "",
     "license": "GNU",
     "bugs": {
-        "url": "https://github.com/kakaroto/Beyond20/issues"
+        "url": "https://github.com/edlost113/StateraBeyond20/issues"
     },
-    "homepage": "https://beyond20.here-for-more.info",
+    "homepage": "https://github.com/edlost113/StateraBeyond20",
     "devDependencies": {
         "cross-var": "^1.1.0",
         "gulp": "^4.0.2",
