@@ -15,7 +15,7 @@
     "optional_permissions": ["*://*/"],
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "beyond20@kakaroto.homelinux.net"
+			"id": "beyond20@statera.com"
 		}
 	},
 	"icons": {
