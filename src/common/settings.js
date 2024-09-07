@@ -343,30 +343,6 @@ const options_list = {
         // callbacks will be added after the functions are defined
     },
 
-    "discord-integration": {
-        "title": "Discord Integration",
-        "description": "You can get rolls sent to Discord by enabling Discord Integration!\n" +
-            "Click the link, follow the instructions and enter your secret key below.",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/discord",
-        "icon": "/images/discord-logo.png",
-        "icon-height": "100%",
-        "icon-width": "auto"
-    },
-
-    "discord-secret": {
-        "type": "migrate",
-        "to": "discord-channels",
-        "default": ""
-    },
-
-    "discord-channels": {
-        "title": "Discord Default Destination Channel",
-        "description": "Default Discord destination channel to send rolls to",
-        "type": "special",
-        "default": null
-    },
-
     "show-changelog": {
         "title": "Show Changelog when installing a new version",
         "description": "When a new version is released and the extension has been updated,\n" +
@@ -429,30 +405,6 @@ const options_list = {
         "advanced": true,
         "default": null
     },
-
-    "donate": {
-        "short": "Buy rations (1 day) to feed my familiar",
-        "title": "Become a patron of the art of software development!",
-        "description": "If you wish to support my work on Beyond 20 or my other D&D related project, subscribe to my patreon " +
-            "or donate via paypal!\nI am grateful for your generosity!",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/rations",
-        "icon": "/images/donate.png",
-        "icon-width": "64",
-        "icon-height": "64"
-    },
-    "donate-advanced": {
-        "short": "Buy rations (1 day) to feed my familiar",
-        "title": "Become a patron of the art of software development!",
-        "description": "If you wish to support my work on Beyond 20 or my other D&D related project, subscribe to my patreon " +
-            "or donate via paypal!\nI am grateful for your generosity!",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/rations",
-        "icon": "/images/donate.png",
-        "icon-width": "64",
-        "icon-height": "64",
-        "advanced": true
-    }
 }
 
 const character_settings = {
