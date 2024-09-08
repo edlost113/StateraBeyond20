@@ -21,26 +21,6 @@ You need to install the build dependencies by running in Beyond20's source direc
 
 You can then build the files using the command `npm run build`
 
-# Developer Mode Installation
-
-All you need is to load the extension from the source :
-
-0. If you already have Beyond20 installed from the Chrome or Firefox stores, disable it.
-1. Download the extension for either [Chrome](https://github.com/kakaroto/Beyond20/releases/download/latest/chrome.zip) or [Firefox](https://github.com/kakaroto/Beyond20/releases/download/latest/firefox.zip)
-2. Extract the zip file in a directory of your choice
-
-## Chrome
-
-3. Go to Chrome Extensions page (Menu->More Tools->Extensions)
-4. Enable Developer Mode (Top-right corner)
-5. Click on the 'Load Unpacked' button
-6. Select the Directory where you extracted this extension
-
-## Firefox
-
-3. Open "[about:debugging#/runtime/this-firefox](about:debugging#/runtime/this-firefox)" in Firefox
-4. Click "Load Temporary Add-on"
-5. Select the `manifest.json` file from the extension's directory
 
 # License
 
