@@ -247,6 +247,16 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                     }
                 }
             }
+            if (character.hasFeat("Boon of Critical Attack Master")) {
+                for (let i = 0; i < damage_types.length; i++) {
+                    let damage = damagesToCrits(character, [damages[i]]);
+                    if (damage.length > 0 && damage[0] != "") {
+                        crit_damages.push(damage[0]);
+                        crit_damage_types.push("Boon of Critical Attack Master("+damage_types[i]+")" );
+                    }
+                }
+            }
+
             if (roll_properties.name === "Blade of Disaster")
                 crit_damages[0] = damagesToCrits(character, ["8d12"])[0];
             if (roll_properties.name === "Jim’s Magic Missile")

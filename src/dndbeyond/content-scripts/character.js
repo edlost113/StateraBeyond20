@@ -727,12 +727,28 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
             damage_types.push("Sneak Attack");
         }
     }
-    
+
+    if (character.hasFeat("Boon of Celestial") && ( (properties["Attack Type"] == "Ranged") || 
+                                                    (properties["Attack Type"] == "Melee")  || 
+                                                    (properties["Attack Type"] == "Unarmed Strike") ||
+                                                    (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Celestial boon (Radiant)");
+    }
+
+    if (character.hasFeat("Boon of Fiend") && ( (properties["Attack Type"] == "Ranged") || 
+                                                (properties["Attack Type"] == "Melee")  || 
+                                                (properties["Attack Type"] == "Unarmed Strike") ||
+                                                (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Fiend boon (Radiant)");
+    }
+
     if (character.hasClass("Ranger")) {
         if ((character.hasFeat("Boon of the Arcane Archer")) && (properties["Attack Type"] == "Ranged")) { 
             let extraDamage = "1d6";
             damages.push(extraDamage);
-            damage_types.push("pick one: fire, cold, acid, necrotic, lightning, force");
+            damage_types.push("Boon of the Arcane Archer");
         }
     }
 
