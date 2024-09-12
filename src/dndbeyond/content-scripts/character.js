@@ -727,6 +727,14 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
             damage_types.push("Sneak Attack");
         }
     }
+    
+    if (character.hasClass("Ranger")) {
+        if ((character.hasFeat("Boon of the Arcane Archer")) && (properties["Attack Type"] == "Ranged")) { 
+            let extraDamage = "1d6";
+            damages.push(extraDamage);
+            damage_types.push("pick one: fire, cold, acid, necrotic, lightning, force");
+        }
+    }
 
     if (character.hasClass("Warlock")) {
         // Warlock: Eldritch Invocation: Lifedrinker
