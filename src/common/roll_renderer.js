@@ -544,7 +544,7 @@ class Beyond20RollRenderer {
             to_hit.push(...rolls);
             all_rolls.push(...rolls);
         }
-
+        
         if (request.rollDamage && request.damages !== undefined) {
             const damages = request.damages;
             const damage_types = request["damage-types"];
@@ -610,8 +610,23 @@ class Beyond20RollRenderer {
                         break;
                     }
                 }
+            } else if (request.name.includes("Sorcerous Burst")) { 
+                for (let [i, dmg_roll] of damage_rolls.entries()) {
+                    const [dmg_type, roll, flags] = dmg_roll;
+                    for (let r of roll.dice[0].rolls) {
+                        if (8 == r.roll) {
+                            const extra_damage_rolls = []
+                            const roll = this._roller.roll("1d8");
+                            roll.setRollType("damage");
+                            extra_damage_rolls.push(roll);
+                            console.log("Roll: " + r.roll);
+                            const suffix = " Additional Damage";
+                            damage_rolls.push([dmg_type + suffix, roll, DAMAGE_FLAGS.REGULAR | DAMAGE_FLAGS.ADDITIONAL]);
+                            await this._roller.resolveRolls(request.name, extra_damage_rolls, request);
+                        }
+                    }
+                }
             }
-
             // If rolling the attack, check for critical hit, otherwise, use argument.
             if (request.rollAttack && to_hit.length > 0) {
                 this.processToHitAdvantage(request.advantage, to_hit)
