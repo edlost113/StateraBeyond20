@@ -187,7 +187,8 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison"]);
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Sorcerous Burst") {
-            console.log(damages);
+            const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Psychic", "Thunder"]);
+            if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name.includes("Chaos Bolt")) {
             let base_damage = null;
             for (let dmgtype of ["Acid", "Cold", "Fire", "Force", "Lightning", "Poison", "Psychic", "Thunder"]) {
