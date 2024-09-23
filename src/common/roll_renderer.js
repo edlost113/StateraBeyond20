@@ -656,6 +656,24 @@ class Beyond20RollRenderer {
                     damage_rolls.push([dmg_type + suffix, roll, damage_flags | DAMAGE_FLAGS.CRITICAL]);
                 }
                 await this._roller.resolveRolls(request.name, critical_damage_rolls, request);
+
+               if (request.name.includes("Sorcerous Burst")) { 
+                    for (let [i, dmg_roll] of critical_damage_rolls.entries()) {
+                        for (let r of dmg_roll.dice[0].rolls) {
+                            if (8 == r.roll) {
+                                const extra_damage_rolls = []
+                                const roll = this._roller.roll("1d8");
+                                const dmg_type = "damage"
+                                roll.setRollType("damage");
+                                extra_damage_rolls.push(roll);
+                                console.log("Roll: " + r.roll);
+                                const suffix = " Additional Damage";
+                                critical_damage_rolls.push([dmg_type + suffix, roll, DAMAGE_FLAGS.REGULAR | DAMAGE_FLAGS.ADDITIONAL]);
+                                await this._roller.resolveRolls(request.name, extra_damage_rolls, request);
+                            }
+                        }
+                    }
+                }
             }
         } else {
             // If no damages, still need to resolve to hit rolls
