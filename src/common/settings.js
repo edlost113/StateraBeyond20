@@ -737,6 +737,12 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "Gift-Alacrity": {
+        "title": "Gift of Alacrity",
+        "description": "Under the effect of the Gift of Alacrity spell",
+        "type": "bool",
+        "default": false
+    },
 }
 
 

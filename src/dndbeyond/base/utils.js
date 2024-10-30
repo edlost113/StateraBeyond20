@@ -399,7 +399,12 @@ async function sendRoll(character, rollType, fallback, args) {
             req.character.settings["custom-roll-dice"] = (req.character.settings["custom-roll-dice"] || "") + ` ${operator}${modifier}`;
         }
     }
-        
+    
+    if (req.type === "initiative") {
+        if (req.character.settings["Gift-Alacrity"]) {
+            req.character.settings["custom-roll-dice"]  = req.character.settings["custom-roll-dice"] + "+1d8"; 
+        }
+    }
     if (req.whisper === WhisperType.QUERY) {
         req.whisper = await dndbeyondDiceRoller.queryWhisper(args.name || rollType, is_monster);
         if (req.whisper === null) return; // Query was cancelled

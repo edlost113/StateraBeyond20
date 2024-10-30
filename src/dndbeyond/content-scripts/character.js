@@ -319,11 +319,13 @@ function rollInitiative() {
         // Render initiative as a string that begins with '+' || '-';
         initiative = initiative >= 0 ? '+' + initiative.toFixed(2) : initiative.toFixed(2);
     }
+    let initiativeRoll = "1d20" + initiative;
 
     const roll_properties = { "initiative": initiative }
+
     if (advantage)
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-    return sendRollWithCharacter("initiative", "1d20" + initiative, roll_properties);
+    return sendRollWithCharacter("initiative", initiativeRoll, roll_properties);
 }
 
 

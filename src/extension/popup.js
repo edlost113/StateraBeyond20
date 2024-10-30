@@ -297,6 +297,9 @@ function populateCharacter(response) {
             e = createHTMLOption("Glibness", false, character_settings);
             options.append(e);
         }
+
+        e = createHTMLOption("Gift-Alacrity", false, character_settings);
+        options.append(e);
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);
