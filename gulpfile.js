@@ -195,7 +195,7 @@ gulp.task("copy-libs", () => {
 });
 
 gulp.task("copy-images", () => {
-    return gulp.src("images/**")
+    return gulp.src("images/**", {encoding: false})
         .pipe(gulp.dest('./build/base/images/'));
 });
 
