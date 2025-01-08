@@ -715,6 +715,11 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
         }
     }
     
+    if (character.hasItemAttuned("Armor of the White Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+    }
+
     if (character.hasClass("Rogue")) {
         // Rogue: Sneak Attack
         if (character.getSetting("rogue-sneak-attack", false) &&

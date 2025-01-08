@@ -18,6 +18,7 @@ class Character extends CharacterBase {
         this._class_features = [];
         this._racial_traits = [];
         this._feats = [];
+        this._items = [];
         this._actions = [];
         this._spell_modifiers = {}
         this._spell_attacks = {}
@@ -222,18 +223,26 @@ class Character extends CharacterBase {
     }
 
     featureDetailsToList(selector, name) {
-        const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading']");
         const feature_list = [];
-        for (let feat of features.toArray()) {
-            const feat_name = feat.childNodes[0].textContent.trim();
-            feature_list.push(feat_name);
-            const options = $(feat).parent().find(".ct-feature-snippet__option > .ct-feature-snippet__heading");
-            for (let option of options.toArray()) {
-                const option_name = option.childNodes[0].textContent.trim();
-                feature_list.push(feat_name + ": " + option_name);
+
+        if(name === "items") {
+            const features = $(selector).find(".ddbc-attunement-slot--filled > .ddbc-attunement-slot__content > .ddbc-attunement-slot__name > span[class*='styles_itemName']");
+            for (let feat of features.toArray()) {
+                const feat_name = feat.childNodes[0].textContent.trim();
+                feature_list.push(feat_name);
+            }
+        } else {
+            const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading']");
+            for (let feat of features.toArray()) {
+                const feat_name = feat.childNodes[0].textContent.trim();
+                feature_list.push(feat_name);
+                const options = $(feat).parent().find(".ct-feature-snippet__option > .ct-feature-snippet__heading");
+                for (let option of options.toArray()) {
+                    const option_name = option.childNodes[0].textContent.trim();
+                    feature_list.push(feat_name + ": " + option_name);
+                }
             }
         }
-
         //console.log(name, feature_list);
         return feature_list;
     }
@@ -276,6 +285,17 @@ class Character extends CharacterBase {
             }
         } else {
             this._feats = this.getSetting("feats", []);
+        }
+
+        const attunement_detail = $(".ct-attunement__group-items");
+        if (attunement_detail.length > 0) {
+            this._items = this.featureDetailsToList(attunement_detail, "items");
+            if (!isListEqual(this._items, this.getSetting("items", []))) {
+                console.log("New Items");
+                update = true;
+            }
+        } else {
+            this._items = this.getSetting("items", []);
         }
 
         const actions_detail = $(".ct-actions-list .ct-actions-list__activatable");
@@ -336,6 +356,7 @@ class Character extends CharacterBase {
                 "class-features": this._class_features,
                 "racial-traits": this._racial_traits,
                 "feats": this._feats,
+                "items": this._items,
                 "actions": this._actions,
                 "spell_modifiers": this._spell_modifiers,
                 "spell_saves": this._spell_saves,
@@ -360,6 +381,10 @@ class Character extends CharacterBase {
     hasFeat(name, substring=false) {
         if (substring) return this._feats.some(f => f.includes(name));
         else return this._feats.includes(name);
+    }
+    hasItemAttuned(name, substring=false) {
+        if (substring) return this._items.some(f => f.includes(name));
+        else return this._items.includes(name);
     }
     hasAction(name, substring=false) {
         if (substring) return this._actions.some(f => f.includes(name));
