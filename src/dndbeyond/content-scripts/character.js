@@ -825,7 +825,7 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                     if (versatile_damage != "") {
                         versatile_damage = versatile_damage.replace(/[0-9]*d[0-9]+/g, "$&ro<=2");
                     } else {
-                        damage = damage.replace(/[0-9]*d[0-9]+/g, "$&ro<=2");
+                        damage = applyGWFIfRequired(item_name, properties, damage);
                     }
                 }
                 if (character.hasClass("Ranger") &&

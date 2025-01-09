@@ -222,7 +222,64 @@ class Character extends CharacterBase {
         }
     }
 
-    featureDetailsToList(selector, name) {
+    featureDetailsToList(selector) {
+        const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading'], .ddbc-attunement-slot--filled > .ddbc-attunement-slot__content > .ddbc-attunement-slot__name > span[class*='styles_itemName']")
+        const feature_list = [];
+        for (let feat of features.toArray()) {
+            const feat_reference = $(feat).parent().find("span[class*='styles_metaItem'] > p[class*='styles_reference'] > span[class*='styles_name']").eq(0).text();
+            const feat_base_name = feat.childNodes[0].textContent.trim()
+            const feat_name = this.getFeatureVersionName(feat_base_name, feat_reference);
+            feature_list.push(feat_name);
+            const options = $(feat).parent().find(".ct-feature-snippet__option > .ct-feature-snippet__heading");
+            for (let option of options.toArray()) {
+                const option_name = option.childNodes[0].textContent.trim();
+                feature_list.push(feat_name + ": " + option_name);
+            }
+            const choices = $(feat).parent().find(".ct-feature-snippet__choices .ct-feature-snippet__choice");
+            if (choices.length > 0) {
+                for (const choice of choices.toArray()) {
+                    const choiceText = descriptionToString(choice);
+                    feature_list.push(feat_name + ": " + choiceText);
+                }
+            }
+            const actions = $(feat).parent().find(".ct-feature-snippet__action > .ct-feature-snippet__action-summary");
+            for (let action of actions.toArray()) {
+                const action_name = action.childNodes[0].textContent.trim();
+                feature_list.push(feat_name + ": " + action_name);
+            }
+        }
+        return feature_list;
+    }
+
+    getFeatureVersionName(feat_name, feat_reference) {
+        if (!feat_reference) return feat_name;
+        let is2024 = false;
+        if((feat_name.toLowerCase() === "great weapon master" ||
+            feat_name.toLowerCase() === "sharpshooter" ||
+            feat_name.toLowerCase() === "dread ambusher" ||
+            feat_name.toLowerCase() === "stalker’s flurry" ||            
+            feat_name.toLowerCase() === "charger" ||
+            feat_name.toLowerCase() === "tavern brawler" ||
+            feat_name.toLowerCase() === "polearm master") && 
+            feat_reference.toLowerCase().includes("2024")) {
+                is2024 = true;
+        } else if ((feat_name.toLowerCase() === "fighting style" ||
+            feat_name.toLowerCase() === "additional fighting style" ||
+            feat_name.toLowerCase() === "great weapon fighting" ||
+            feat_name.toLowerCase() === "sneak attack") &&
+            feat_reference.toLowerCase().includes("free-rules")) {
+                is2024 = true;
+        }
+
+        if (is2024) {
+            // just using something set by us so if it changes in the future we dont care
+            return `${feat_name} 2024`;
+        } else {
+            return feat_name;
+        }
+    }
+
+    /*featureDetailsToList(selector, name) {
         const feature_list = [];
 
         if(name === "items") {
@@ -245,7 +302,7 @@ class Character extends CharacterBase {
         }
         //console.log(name, feature_list);
         return feature_list;
-    }
+    }*/
 
     updateFeatures() {
         let update = false;
@@ -369,7 +426,22 @@ class Character extends CharacterBase {
             });
         }
     }
-
+    hasGreatWeaponFighting(version) {
+        const check2014 = version === 2014 || version === undefined;
+        const check2024 = version === 2024 || version === undefined;
+        if (!check2014 && !check2024) {
+            console.error("Invalid version for hasGreatWeaponFighting, expected 2014, 2024 or undefined, got", version);
+            return false;
+        }
+        const hasGWF2014 = this.hasClassFeature("Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Fighting Initiate: Great Weapon Fighting") ||
+                this.hasFeat("Great Weapon Fighting");
+        const hasGWF2024 = this.hasClassFeature("Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasFeat("Great Weapon Fighting 2024");
+        return (check2014 && hasGWF2014) || (check2024 && hasGWF2024);
+    }
     hasClassFeature(name, substring=false) {
         if (substring) return this._class_features.some(f => f.includes(name));
         else return this._class_features.includes(name);
