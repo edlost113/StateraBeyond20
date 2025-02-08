@@ -210,6 +210,10 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Is the target missing any of its hit points ?", { "d12": "Yes", "d8": "No" }, "ttd_dice", ["d12", "d8"]);
             if (ttd_dice === null) return null;
             damages[0] = damages[0].replace("d8", ttd_dice);
+        } else if (roll_properties.name == "Consumption (2024)") {
+            const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Did you use a blood die ?", { "d12": "Yes", "d6": "No" }, "ttd_dice", ["d12", "d6"]);
+            if (ttd_dice === null) return null;
+            damages[0] = damages[0].replace("d6", ttd_dice);
         }  else if (roll_properties.name === "Spirit Shroud") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Cold", "Necrotic", "Radiant"]);
             if (choice === null) return null; // Query was cancelled;
