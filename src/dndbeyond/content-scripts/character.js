@@ -426,6 +426,11 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damages.push("1d8");
             damage_types.push("Radiant");
         }
+        if (character.hasClassFeature("Radiant Strikes") &&
+            character.getSetting("paladin-improved-divine-smite", true)) {
+            damages.push("1d8");
+            damage_types.push("Radiant");
+        }
     }
     if (character.hasClass("Druid")) {
         //Druid: Primal Strike
