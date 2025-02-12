@@ -427,6 +427,18 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damage_types.push("Radiant");
         }
     }
+    if (character.hasClass("Druid")) {
+        //Druid: Primal Strike
+        if (character.hasClassFeature("Improved Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("2d8");
+            damage_types.push("Primal Strike");
+        } else if (character.hasClassFeature("Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("1d8");
+            damage_types.push("Primal Strike");
+        }
+    }
 
     if (character.hasClass("Wizard")) {
         // Wizard: Bladesinging: Song of Victory

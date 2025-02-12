@@ -527,6 +527,18 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "druid-primal-strike": {
+        "title": "Druid: Primal Strike",
+        "description": "Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form’s attack in Wild Shape, you can cause the target to take an extra 1d8 Cold, Fire, Lightning, or Thunder damage (choose when you hit).",
+        "type": "bool",
+        "default": false
+    },
+    "druid-potent-spellcasting": {
+        "title": "Druid: Potent Spellcasting",
+        "description": "Add your Wisdom modifier to the damage you deal with any Druid cantrip.",
+        "type": "bool",
+        "default": false
+    },
     "wildfire-spirit-enhanced-bond": {
         "title": "Druid: Circle of Wildfire: Enhanced Bond",
         "description": "The bond with your wildfire spirit enhances your destructive and restorative spells.",

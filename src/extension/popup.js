@@ -176,6 +176,14 @@ function populateCharacter(response) {
             e = createHTMLOption("paladin-improved-divine-smite", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Elemental Fury")) {
+            e = createHTMLOption("druid-primal-strike", false, character_settings);
+            options.append(e);
+        }
+        if (response["class-features"].includes("Elemental Fury")) {
+            e = createHTMLOption("druid-potent-spellcasting", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Hexblade’s Curse")) {
             e = createHTMLOption("warlock-hexblade-curse", false, character_settings);
             options.append(e);
