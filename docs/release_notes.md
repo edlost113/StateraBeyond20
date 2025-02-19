@@ -1,4 +1,137 @@
-v2.9.5 (JuLy 27th 2024)
+v2.13.1 (February 19th 2025)
+===
+
+Hi,
+
+We're releasing today a hotfix release as D&D Beyond have changed their site and the HP syncing fix from last week's release already needed to be rewritten.
+
+This hotfix release fixes HP syncing as well as the missing description when displaying actions.
+
+Thanks and enjoy!
+
+
+v2.13.0 (February 13th 2025)
+===
+
+Hi everyone,
+
+With the release last week of the new Monster Manual 2024, we have seen the introduction of a new statblock format to the monsters!
+Today's update adds support for the new 2024 monster stat blocks, as well as adds a couple of small bugfixes.
+
+Check out the full [Changelog](/Changelog#v2130) to see all the changes added in this release.
+
+As usual, a big thank you to [@dmportella](https://linktr.ee/dmportella) as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+P.S: The version 2.13.0 being released on February 13th is purely a coincidence! :D
+
+Enjoy.
+
+
+
+v2.12.0 (January 25th 2025)
+===
+
+Hi,
+
+We've had a lot of changes to the D&D Beyond website in recent weeks and a few things continue to break, requiring more fixes. 
+
+This release adds quite a few bugfixes and improvements, and adds a few interesting features as well, such as the ability to send to the VTT the images and art from source books, as well as the ability to apply exhaustion effects on your rolls automatically.
+
+Check out the full [Changelog](/Changelog#v2120) to see all the changes added in this release.
+
+As usual, a big thank you to [@dmportella](https://linktr.ee/dmportella) as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Enjoy.
+
+
+v2.11.1 (January 8th 2025)
+===
+
+Happy New Year,
+
+I hope everyone had a chance to rest and find moments of peace and reflection during the holidays.
+
+We're releasing today a bugfix release as character sheet changes continue on D&D Beyond and rolling actions (like unarmed strike) from character sheets were broken. This release also fixes the bug preventing Strength checks from working from within a character sheet's Extra creature's statblock.
+
+Thanks again to [@dmportella](https://linktr.ee/dmportella) for the fixes, as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Enjoy.
+
+
+v2.11.0 (December 21st 2024)
+===
+
+Hello players!
+
+In the last month, [@dmportella](https://linktr.ee/dmportella) has contributed a ton of new features and fixes to Beyond20, and it's time for you to enjoy them!
+This release, the last release of 2024, brings support for many of the new class features introduced in the 2024 version of the rulebook as well as fixes various new issues that appeared with the character sheet in the last month as D&D Beyond continues to make changes to their website.
+
+One of the new features that was introduced that I'm particularly happy about is the support for spell effects, with an initial support for Bless, Bane, Enlarge and Reduce. With one option (or hotkey) you can toggle the effects of one of those spells on your rolls. 
+
+The biggest issue we've seen with the DDB site changes that this release fixes is the statblocks of creatures in Extras tab which had stopped working, as well as rolling ability checks when using non default ability score/modifier display setting. You can see the full list of changes in the [Changelog](/Changelog#v2110).
+
+As usual, thank you to all contributors, especially [@dmportella](https://linktr.ee/dmportella) who did most of the work in this release, as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Enjoy and may you have a peaceful holiday season.
+
+
+v2.10.0 (November 17th 2024)
+===
+
+Hi everyone,
+
+It's time for another update to Beyond20. This release fixes some of the few parsing issues that have slowly crept up during the last month, due to D&D Beyond continuously changing their character sheets, but it also has a few new features as well.
+
+Other than adding support for some of the new 2024 rules (new monsters, species, backgrounds, Great Weapon Fighting, Great Weapon Master, Polearm Master), it also finally properly implements Firefox's optional permissions API, allowing Firefox users to enjoy the same dynamic permissions as Chrome user had. This also removes for Firefox users the previously mandatory discord permissions and brings support for Roll20's Discord Activity on par with the Chrome implementation.
+
+There's more work to be done in the next few weeks and months to continue supporting the new changes with the 2024 rules, but this is a very good starting point.
+You can see the full list of changes in the [Changelog](/Changelog#v2100).
+
+As usual, thank you to all contributors, especially [@dmportella](https://linktr.ee/dmportella), as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Happy rolling!
+
+v2.9.8 (October 12th 2024)
+===
+
+Hi again,
+
+Another few weeks have passed and another update to D&D Beyond's website has broken Beyond 20. This update fixes the recent issue of being unable to roll items/weapon attacks. It also adds support to some of the new 2024 rules and minor bugfixes.
+
+**Note**: The v2.9.8 update fixes a small issue with To Hit detection which slipped through the 2.9.7 release from the day before.
+
+As always, thank you to [@dmportella](https://linktr.ee/dmportella) for his contributions and to everyone who supports the project, and thank you to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
+
+Enjoy!
+
+v2.9.7 (October 11th 2024)
+===
+
+Hi again,
+
+Another few weeks have passed and another update to D&D Beyond's website has broken Beyond 20. This update fixes the recent issue of being unable to roll items/weapon attacks. It also adds support to some of the new 2024 rules and minor bugfixes.
+
+As always, thank you to [@dmportella](https://linktr.ee/dmportella) for his contributions and to everyone who supports the project, and thank you to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
+
+Enjoy!
+
+v2.9.6 (September 22nd 2024)
+===
+
+Hi everyone,
+
+I'm releasing another small bugfix update to Beyond20 after recent changes to D&D Beyond website broke some functionality of the extension, more specifically, the detection of class features, feats and racial features from your characters.
+
+This update also includes support for the Roll20 Discord Activity, thanks to the contribution by Riley Dutton from Roll20. Note however that it only works if you open Discord inside of your browser alongside the D&D Beyond page. Also note that Chrome/Edge users will need to click on the Beyond20 icon in the address bar and authorize the extension to work on the Discord page before you can use the new feature. Firefox users will be prompted to accept the new permissions upon updating, as unfortunately, Firefox does not support optional permissions and the permissions request API.
+
+Another big thank you to [@dmportella](https://linktr.ee/dmportella) who helped fix the issue with class feature detection and added support for the Sorcereus Burst spell. And like last time, you should continue to direct your thanks to him, perhaps via his [Ko-fi page](https://ko-fi.com/gothyl)! 
+
+As always, thank you everyone who contributed to the project, and thank you to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
+
+Enjoy!
+
+
+v2.9.5 (July 27th 2024)
 ===
 
 Hi everyone,

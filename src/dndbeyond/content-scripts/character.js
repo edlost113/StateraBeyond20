@@ -5,14 +5,20 @@ function sendRollWithCharacter(rollType, fallback, args) {
     if (preview && preview.startsWith("url("))
         args.preview = preview.slice(5, -2);
     // Add halfling luck
-    if (character.hasRacialTrait("Lucky") && character.getSetting("halfling-lucky", false) && ["skill", "ability", "saving-throw", "death-save",
-        "initiative", "attack", "spell-attack"].includes(rollType)) {
+    if ((character.hasRacialTrait("Lucky") || character.hasRacialTrait("Luck")) && character.getSetting("halfling-lucky", false) &&
+        ["skill", "ability", "saving-throw", "death-save", "initiative", "attack", "spell-attack"].includes(rollType)) {
         args.d20 = args.d20 || "1d20";
         args.d20 += "ro<=1";
     }
     return sendRoll(character, rollType, fallback, args);
 }
 
+function addEffect(rollProperties, effect) {
+    rollProperties["effects"] = rollProperties["effects"] || [];
+    if (!rollProperties["effects"].includes(effect)) {
+        rollProperties["effects"].push(effect);
+    }
+}
 
 async function rollSkillCheck(paneClass) {
     const skill_name = $("." + paneClass + "__header-name").text();
@@ -91,24 +97,29 @@ async function rollSkillCheck(paneClass) {
         ((character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
             (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false)))) {
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
+        if(character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) {
+            addEffect(roll_properties, "Rage");
+        }
     }
     if (skill_name == "Acrobatics" && character.hasClassFeature("Bladesong") && character.getSetting("wizard-bladesong", false)) {
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
     }
     roll_properties.d20 = "1d20";
     // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
-    if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency))
-        roll_properties.d20 = "1d20min10";
-
+    if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency)) {
+        addEffect(roll_properties, "Reliable Talent");
+    }
     if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
-        roll_properties.d20 = "1d20min10";
+        addEffect(roll_properties, "Reliable Talent");
 
     if (ability == "CHA" && character.getSetting("Glibness", false))
         roll_properties.d20 = "1d20min15";
-
+  
     // Set Silver Tongue if Deception or Persuasion
-    if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion"))
+    if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion")) {
         roll_properties.d20 = "1d20min10";
+        addEffect(roll_properties, "Silver Tongue");
+    }
     
     // Sorcerer: Clockwork Soul - Trance of Order
     if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
@@ -237,6 +248,7 @@ function rollAbilityOrSavingThrow(paneClass, rollType) {
         ((character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
             (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false)))) {
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
+        addEffect(roll_properties, "Rage");
     }
     if (character.hasClassFeature("Indomitable Might") && ability == "STR") {
         const min = character.getAbility("STR").score - parseInt(modifier);
@@ -285,7 +297,7 @@ function rollAbilityOrSavingThrow(paneClass, rollType) {
     // Sorcerer: Clockwork Soul - Trance of Order
     if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
             roll_properties.d20 = "1d20min10";
-
+   
     return sendRollWithCharacter(rollType, "1d20" + modifier, roll_properties);
 }
 
@@ -398,7 +410,7 @@ function isItemAnInstruction(item_name, item_tags) {
     return item_tags.includes("Instrument") || item_name.includes(" Drum");
 }
 
-function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, settings_to_change={}, {to_hit, action_name=""}={}) {
+function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, settings_to_change={}, { to_hit, action_name="", effects=[] }={}) {
     if (character.hasClass("Barbarian")) {
         // Barbarian: Rage
         if (character.hasClassFeature("Rage") &&
@@ -407,6 +419,7 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             const rage_damage = barbarian_level < 9 ? 2 : (barbarian_level < 16 ? 3 : 4);
             damages.push(String(rage_damage));
             damage_types.push("Rage");
+            effects.push("Rage");
         }
     }
 
@@ -420,9 +433,13 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
     }
 
     if (character.hasClass("Paladin")) {
-        //Paladin: Improved Divine Smite
-        if (character.hasClassFeature("Improved Divine Smite") &&
-            character.getSetting("paladin-improved-divine-smite", true)) {
+        // Paladin: Improved Divine Smite
+        // Radiant Strikes works on melee and unarmed strikes, while Improved Divine Smite
+        // only works on melee weapon attacks, so check for action_name which would indicate a non weapon attack
+        if ((character.hasClassFeature("Improved Divine Smite") &&
+            character.getSetting("paladin-improved-divine-smite", true) && !action_name) ||
+            (character.hasClassFeature("Radiant Strikes") &&
+            character.getSetting("paladin-radiant-strikes", true))) {
             damages.push("1d8");
             damage_types.push("Radiant");
         }
@@ -460,14 +477,30 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
     // Great Weapon Master Feat
     if (to_hit !== null && 
         character.getSetting("great-weapon-master", false) &&
-        character.hasFeat("Great Weapon Master") &&
-        (properties["Properties"] && properties["Properties"].includes("Heavy") ||
-        action_name.includes("Polearm Master")) &&
-        properties["Proficient"] == "Yes") {
+        character.hasFeat("Great Weapon Master") && 
+        (this.IsHeavy(properties) || this.IsPoleArmMasterAttack(properties, action_name)))
+         {
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Great Weapon Master");
     //    settings_to_change["great-weapon-master"] = false;
+    }
+
+    if (to_hit !== null && 
+        character.getSetting("great-weapon-master-2024", true) &&
+        character.hasFeat("Great Weapon Master 2024") &&
+        this.IsHeavy(properties) &&
+        !this.IsPoleArmMasterAttack(properties, action_name)) {
+        const proficiency = parseInt(character._proficiency);
+        damages.push(proficiency.toString());
+        damage_types.push("Great Weapon Master");
+    }
+    
+    // enhanced unarmed strike
+    if(to_hit !== null && 
+        character.hasFeat("Tavern Brawler 2024") &&
+        action_name.toLocaleLowerCase() === "enhanced unarmed strike") {
+        damages[0] = damages[0].replace(/[0-9]*d[0-9]+/g, "$&ro<=1");
     }
 
     // Charger Feat
@@ -476,12 +509,38 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         damages.push("+5");
         damage_types.push("Charger Feat");
         settings_to_change["charger-feat"] = false;
+    } else if (character.hasFeat("Charger 2024") &&
+        character.getSetting("charger-feat")) {
+            let charge_dmg = "1d8";
+            // apply GWF if needed
+            if(((properties["Attack Type"] == "Melee" && ((properties["Properties"].includes("Versatile") && character.getSetting("versatile-choice") != "one") || 
+                properties["Properties"].includes("Two-Handed"))) ||
+                action_name == "Polearm Master - Bonus Attack" ||
+                action_name == "Pole Strike")) {
+                if(character.hasGreatWeaponFighting(2014)) {
+                    charge_dmg += "ro<=2";
+                } else if(character.hasGreatWeaponFighting(2024)) {
+                    charge_dmg += "min3";
+                }
+            }
+
+            damages.push(charge_dmg);
+            damage_types.push("Charger Feat");
+            settings_to_change["charger-feat"] = false;
     }
     
     return to_hit;
 }
 
-function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, settings_to_change={}, {to_hit, action_name=""}={}) {
+function IsPoleArmMasterAttack(properties, action_name) {
+    return (properties["Proficient"] == "Yes" && (action_name.includes("Polearm Master") || action_name.includes("Pole Strike")));
+}
+
+function IsHeavy(properties) {
+    return ((properties["Properties"] && properties["Properties"].includes("Heavy")) && properties["Proficient"] == "Yes");
+}
+
+function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, settings_to_change={}, { to_hit, action_name="", effects=[] }={}) {
     // Feats
     // Sharpshooter Feat
     if (to_hit !== null && 
@@ -519,7 +578,8 @@ function handleSpecialGeneralAttacks(damages=[], damage_types=[], properties, se
         if ((((item_name || action_name) && to_hit != null) || (spell_name && spell_level.includes("Cantrip"))) &&
             character.hasClassFeature("Blessed Strikes") &&
             character.getSetting("cleric-blessed-strikes", false)) {
-            damages.push("1d8");
+            if(character.hasClassFeature("Improved Blessed Strikes")) damages.push("2d8");
+            else damages.push("1d8");
             damage_types.push("Blessed Strikes");
         }
     }
@@ -595,7 +655,7 @@ function handleSpecialGeneralAttacks(damages=[], damage_types=[], properties, se
     return to_hit;
 }
 
-function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, settings_to_change={}, {action_name="", item_customizations=[], item_type="", to_hit}={}) {
+function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, settings_to_change={}, {action_name="", item_customizations=[], item_type="", item_name="", to_hit}={}) {
     // Class Specific
     if (character.hasClass("Artificer")) {
         //Artificer: Battlemaster: Arcane Jolt
@@ -696,9 +756,18 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
     if (character.hasClass("Ranger")) {
         // Ranger: Gloom Stalker: Dread Ambusher
         if (character.getSetting("ranger-dread-ambusher", false)) {
-            damages.push("1d8");
-            damage_types.push("Dread Ambusher");
-            settings_to_change["ranger-dread-ambusher"] = false;
+            const hasDreadAmbusher = character.hasClassFeature("Dread Ambusher");
+            const hasDreadAmbusher2024 = character.hasClassFeature("Dread Ambusher 2024");
+            
+            if (hasDreadAmbusher || hasDreadAmbusher2024) {
+                damages.push(
+                    hasDreadAmbusher 
+                        ? "1d8" 
+                        : (character.hasClassFeature("Stalker’s Flurry 2024") ? "2d8" : "2d6")
+                );
+                damage_types.push("Dread Ambusher");
+                settings_to_change["ranger-dread-ambusher"] = false;
+            }
         }
         
         // Ranger: Hunter: Colossus Slayer
@@ -739,14 +808,19 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
 
     if (character.hasClass("Rogue")) {
         // Rogue: Sneak Attack
-        if (character.getSetting("rogue-sneak-attack", false) &&
+        const name = action_name || item_name || "";
+        if(character.hasClassFeature("Sneak Attack") && character.getSetting("rogue-sneak-attack", false) &&
             (properties["Attack Type"] == "Ranged" ||
             (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
-            (action_name && (action_name.includes("Psychic Blade") || action_name.includes("Shadow Blade"))))) {
-            let sneak_attack = Math.ceil(character._classes["Rogue"] / 2) + "d6";
+
+            name.includes("Psychic Blade") ||
+            name.includes("Shadow Blade"))) {
+            const sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
+            const sneak_attack = `${sneakDieCount}d6`;
             if (character.hasFeat("Boon of the Blade")) { 
                 sneak_attack = "10d10";
             }
+
             damages.push(sneak_attack);
             damage_types.push("Sneak Attack");
         }
@@ -798,16 +872,25 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
     const properties = propertyListToDict(prop_list);
     properties["Properties"] = properties["Properties"] || "";
     //console.log("Properties are : " + String(properties));
-    const item_name = $(".ct-item-pane .ct-sidebar__heading span[class*='styles_itemName'],.ct-item-pane .ct-sidebar__heading .ddbc-item-name")[0].firstChild.textContent;
+
+    const item_name = $(".ct-item-pane .ct-sidebar__heading .ct-item-name,.ct-item-pane .ct-sidebar__heading .ddbc-item-name, .ct-item-pane .ct-sidebar__heading span[class*='styles_itemName']")[0].firstChild.textContent;
+
     const item_type = $(".ct-item-detail__intro").text();
     const item_tags = $(".ct-item-detail__tags-list .ct-item-detail__tag").toArray().map(elem => elem.textContent);
     const item_customizations = $(".ct-item-pane .ct-item-detail__class-customize-item .ddbc-checkbox--is-enabled .ddbc-checkbox__label").toArray().map(e => e.textContent);
     const source = item_type.trim().toLowerCase();
     const is_tool = isItemATool(item_name, source);
     const is_instrument = isItemAnInstruction(item_name, item_tags);
-    const description = descriptionToString(".ct-item-detail__description");
+    const description = descriptionToString(`.ct-item-detail__description, .ct-item-pane div[class*='styles_description']`);
     const quantity = $(".ct-item-pane .ct-simple-quantity .ct-simple-quantity__value .ct-simple-quantity__input").val();
     const is_infused = $(".ct-item-pane .ct-item-detail__infusion");
+    const has_mastery = $(".ct-item-pane div[class*='styles_action'] div[class*='styles_label']");
+    if(has_mastery.length >0){
+        const regex = /Mastery:\s+(.+)/;
+        const match = has_mastery.text().trim().match(regex);
+        const mastery = match ? match[1].trim() : null;
+        if(mastery) properties["Mastery"] = mastery;
+    }
     if (is_infused.length > 0)
         properties["Infused"] = true;
     let is_versatile = false;
@@ -821,6 +904,7 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
         if (to_hit === null)
             to_hit = findToHit(item_full_name, ".ct-combat-attack--item,.ddbc-combat-attack--item", ".ct-item-name,.ddbc-item-name,span[class*='styles_itemName']", ".ct-combat-attack__tohit,.ddbc-combat-attack__tohit");
+
         if (to_hit !== null)
             character._cacheToHit(item_full_name, to_hit);
         else
@@ -835,16 +919,15 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 let damage = value.find(".ct-damage__value,.ddbc-damage__value").text();
                 let damage_type = properties["Damage Type"] || "";
                 let versatile_damage = value.find(".ct-item-detail__versatile-damage,.ddbc-item-detail__versatile-damage").text().slice(1, -1);
-                if (damages.length == 0 &&
-                    (character.hasClassFeature("Great Weapon Fighting", true) || character.hasFeat("Great Weapon Fighting", true)) &&
-                    properties["Attack Type"] == "Melee" &&
-                    (properties["Properties"].includes("Versatile") || properties["Properties"].includes("Two-Handed"))) {
+
+                if(damages.length == 0) {
                     if (versatile_damage != "") {
-                        versatile_damage = versatile_damage.replace(/[0-9]*d[0-9]+/g, "$&ro<=2");
+                        versatile_damage = applyGWFIfRequired(item_name, properties, versatile_damage);
                     } else {
                         damage = applyGWFIfRequired(item_name, properties, damage);
                     }
                 }
+
                 if (character.hasClass("Ranger") &&
                     character.hasClassFeature("Planar Warrior") &&
                     character.getSetting("ranger-planar-warrior", false))
@@ -894,17 +977,27 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                         if (dmg_info != "")
                             dmg_type += " (" + dmg_info + ")";
 
-                        if ((character.hasClassFeature("Great Weapon Fighting", true) || character.hasFeat("Great Weapon Fighting", true)) &&
-                            properties["Attack Type"] == "Melee" &&
-                            (properties["Properties"].includes("Two-Handed") ||
-                                (properties["Properties"].includes("Versatile") && character.getSetting("versatile-choice", "both") === "two")))
-                            dmg = dmg.replace(/[0-9]*d[0-9]+/g, "$&ro<=2");
+                        dmg = applyGWFIfRequired(item_name, properties, dmg);
+
                         damages.push(dmg);
                         damage_types.push(dmg_type);
                     }
                 }
                 break;
             }
+        }
+
+        // 2024 brutal strike
+        if (character.getSetting("brutal-strike") && character.hasClassFeature("Brutal Strike"))  {  
+            let strikeDieCount = character.hasClassFeature("Improved Brutal Strike") ? 2 : 1; 
+            let brutal_strike_dmg = `${strikeDieCount}d10`;
+            
+            brutal_strike_dmg = applyGWFIfRequired(item_name, properties, brutal_strike_dmg);
+            
+            damages.push(brutal_strike_dmg);
+            damage_types.push("Brutal Strike");
+
+            settings_to_change["brutal-strike"] = false;
         }
 
         // Handle Dragon Wing * Ranged Weapons
@@ -959,14 +1052,15 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
         to_hit = handleSpecialGeneralAttacks(damages, damage_types, properties, settings_to_change, {to_hit, item_name});
 
-        to_hit = handleSpecialWeaponAttacks(damages, damage_types, properties, settings_to_change, {item_customizations, item_type, to_hit});
+        to_hit = handleSpecialWeaponAttacks(damages, damage_types, properties, settings_to_change, {item_customizations, item_type, to_hit, item_name});
 
+        const effects = [];
         if (properties["Attack Type"] == "Melee") {
-            to_hit = handleSpecialMeleeAttacks(damages, damage_types, properties, settings_to_change, {to_hit});
+            to_hit = handleSpecialMeleeAttacks(damages, damage_types, properties, settings_to_change, { to_hit, effects });
         }
 
         if (properties["Attack Type"] == "Ranged") {
-            to_hit = handleSpecialRangedAttacks(damages, damage_types, properties, settings_to_change, {to_hit});
+            to_hit = handleSpecialRangedAttacks(damages, damage_types, properties, settings_to_change, { to_hit, effects });
         }
         
         let critical_limit = 20;
@@ -1004,10 +1098,16 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
             brutal,
             force_to_hit_only,
             force_damages_only,
-            {weapon_damage_length});
+            {weapon_damage_length},
+            settings_to_change
+        );
         if (roll_properties === null) {
             // A query was cancelled, so let's cancel the roll
             return;
+        }
+        effects.forEach(effect => addEffect(roll_properties, effect));
+        if (properties["Mastery"]) {
+            roll_properties["mastery"] = properties["Mastery"];
         }
         roll_properties["item-type"] = item_type;
         roll_properties["item-customizations"] = item_customizations;
@@ -1076,6 +1176,7 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                     ((character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
                         (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false)))) {
                     roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
+                    addEffect(roll_properties, "Rage");
                 }
                 roll_properties.d20 = "1d20";
                 // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
@@ -1128,11 +1229,11 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
         return displayAction(paneClass);
     }
     // b20-action-pane and ct-custom-action-page both use ct-action-detail for the details
-    const properties = propertyListToDict($("." + paneClass + " .ct-action-detail [role=list] > div"));
+    const properties = propertyListToDict($(`.${paneClass} [role=list] > div, .${paneClass} .ct-action-detail [role=list] > div`));
     //console.log("Properties are : " + String(properties));
     const action_name = $(".ct-sidebar__heading").text();
     const action_parent = $(".ct-sidebar__header-parent").text();
-    const description = descriptionToString(".ct-action-detail__description");
+    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description']`);
     let to_hit = properties["To Hit"] !== undefined && properties["To Hit"] !== "--" ? properties["To Hit"] : null;
 
     if (action_name == "Superiority Dice" || action_parent == "Maneuvers") {
@@ -1184,12 +1285,25 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
         if (character.hasClassFeature("Hexblade’s Curse") &&
             character.getSetting("warlock-hexblade-curse", false))
             critical_limit = 19;
-        // Polearm master bonus attack using the other end of the polearm is considered a melee attack.
-        if (action_name.includes("Polearm Master") && (character.hasClassFeature("Great Weapon Fighting", true) || character.hasFeat("Great Weapon Fighting", true))) {
-            damages[0] = damages[0].replace(/[0-9]*d[0-9]+/g, "$&ro<=2");
+
+        // 2024 brutal strike add extra die and apply GWF
+        if (character.getSetting("brutal-strike") && character.hasClassFeature("Brutal Strike"))  {  
+            let strikeDieCount = character.hasClassFeature("Improved Brutal Strike") ? 2 : 1; 
+
+            let brutal_strike_dmg = applyGWFIfRequired(action_name, properties, `${strikeDieCount}d10`);
+
+            damages.push(brutal_strike_dmg);
+            damage_types.push("Brutal Strike");
+
+            settings_to_change["brutal-strike"] = false;
         }
 
-        const isMeleeAttack = action_name.includes("Polearm Master") || action_name.includes("Unarmed Strike") || action_name.includes("Tavern Brawler Strike")
+        // apply for normal die
+        if (damages.length != 0) {
+            damages[0] = applyGWFIfRequired(action_name, properties, damages[0]);
+        }
+
+        const isMeleeAttack = action_name.includes("Polearm Master") || action_name.includes("Pole Strike") || action_name.includes("Unarmed Strike") || action_name.includes("Tavern Brawler Strike")
         || action_name.includes("Psychic Blade") || action_name.includes("Bite") || action_name.includes("Claws") || action_name.includes("Tail")
         || action_name.includes("Ram") || action_name.includes("Horns") || action_name.includes("Hooves") || action_name.includes("Talons") 
         || action_name.includes("Thunder Gauntlets") || action_name.includes("Unarmed Fighting") || action_name.includes("Arms of the Astral Self")
@@ -1219,12 +1333,13 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
             }
         }
 
+        const effects = [];
         if (isMeleeAttack) {
-            to_hit = handleSpecialMeleeAttacks(damages, damage_types, properties, settings_to_change, {to_hit, action_name});
+            to_hit = handleSpecialMeleeAttacks(damages, damage_types, properties, settings_to_change, { to_hit, action_name, effects });
         }
 
         if (isRangedAttack) {
-            to_hit = handleSpecialRangedAttacks(damages, damage_types, properties, settings_to_change, {to_hit, action_name});
+            to_hit = handleSpecialRangedAttacks(damages, damage_types, properties, settings_to_change, { to_hit, action_name, effects });
         }
 
         // Circle of Spores - Symbiotic Entity
@@ -1245,12 +1360,14 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
             brutal,
             force_to_hit_only,
             force_damages_only,
-            {weapon_damage_length});
+            {weapon_damage_length},
+            settings_to_change);
 
         if (roll_properties === null) {
             // A query was cancelled, so let's cancel the roll
             return;
         }
+        effects.forEach(effect => addEffect(roll_properties, effect));
         if (critical_limit != 20)
             roll_properties["critical-limit"] = critical_limit;
 
@@ -1510,7 +1627,7 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
     const spell_source = $(".ct-sidebar__header-parent").text() || $(".ct-sidebar__header > div").text();
     const spell_full_name = $(".ct-sidebar__heading .ct-spell-name,.ct-sidebar__heading .ddbc-spell-name, .ct-sidebar__heading span[class*='styles_spellName']").text();
     const spell_name = $(".ct-sidebar__heading .ct-spell-name,.ct-sidebar__heading .ddbc-spell-name, .ct-sidebar__heading span[class*='styles_spellName']")[0].firstChild.textContent;
-    const description = descriptionToString(".ct-spell-pane .ct-spell-detail__description");
+    const description = descriptionToString(`.ct-spell-pane .ct-spell-detail__description, .ct-spell-pane div[class*='styles_description']`);
     const damage_modifiers = $(".ct-spell-pane .ct-spell-caster__modifiers--damages .ct-spell-caster__modifier--damage");
     const healing_modifiers = $(".ct-spell-pane .ct-spell-caster__modifiers--healing .ct-spell-caster__modifier--hp");
     const temp_hp_modifiers = $(".ct-spell-pane .ct-spell-caster__modifiers--healing .ct-spell-caster__modifier--temp");
@@ -1610,7 +1727,9 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
             to_hit,
             0,
             force_to_hit_only,
-            force_damages_only);
+            force_damages_only,
+            {},
+            settings_to_change);
 
         if (roll_properties === null) {
             // A query was cancelled, so let's cancel the roll
@@ -1704,7 +1823,7 @@ function displayFeature(paneClass) {
     const name = $(".ct-sidebar__heading").text();
     const source = $(".ct-sidebar__header-parent").text();
     const source_type = source_types[paneClass];
-    let description = descriptionToString(`.${paneClass} .ct-snippet__content,.${paneClass} .ddbc-snippet__content`);
+    let description = descriptionToString(`.${paneClass} .ct-snippet__content,.${paneClass} .ddbc-snippet__content, .${paneClass} div[class*='styles_description']`);
     const choices = $(`.${paneClass} .ct-feature-snippet__choices .ct-feature-snippet__choice`);
     if (choices.length > 0) {
         description += "\n";
@@ -1723,7 +1842,7 @@ function displayFeature(paneClass) {
 
 function displayTrait() {
     const trait = $(".ct-sidebar__heading").text();
-    const description = descriptionToString(".ct-trait-pane__input");
+    const description = descriptionToString(".ct-trait-pane__input, .ct-trait-pane textarea, .ct-trait-pane div[class*='styles_description']");
     return sendRollWithCharacter("trait", 0, {
         "name": trait,
         "description": description
@@ -1732,7 +1851,7 @@ function displayTrait() {
 
 function displayBackground() {
     const background = $(".ct-sidebar__heading").text();
-    const description = descriptionToString(".ct-background-pane__description > p");
+    const description = descriptionToString(".ct-background-pane__description > p, div[class*='styles_pane'] .ddbc-html-content > p");
     return sendRollWithCharacter("trait", 0, {
         name: background,
         source: "Background",
@@ -1742,7 +1861,7 @@ function displayBackground() {
 
 function displayAction(paneClass) {
     const action_name = $(".ct-sidebar__heading").text();
-    const description = descriptionToString(".ct-action-detail__description");
+    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description']`);
     return sendRollWithCharacter("trait", 0, {
         "name": action_name,
         "description": description,
@@ -1752,7 +1871,7 @@ function displayAction(paneClass) {
 
 function displayInfusion() {
     const infusion = $(".ct-sidebar__heading").text();
-    const description = descriptionToString(".ct-infusion-choice-pane__description");
+    const description = descriptionToString(".ct-infusion-choice-pane__description, .ct-infusion-choice-pane div[class*='styles_description']");
     return sendRollWithCharacter("trait", 0, {
         "name": infusion,
         "description": description,
@@ -1779,7 +1898,7 @@ function handleCustomText(paneClass) {
     const rollOrderTypes = ["before", "after", "replace"];
     const pane = $(`.${paneClass}`);
     const notes = descriptionToString(pane.find("[role=list] > div:contains('Note')"));
-    const description = descriptionToString(pane.find(".ct-action-detail__description, .ct-spell-detail__description, .ct-item-detail__description, .ddbc-action-detail__description, .ddbc-spell-detail__description, .ddbc-item-detail__description"));
+    const description = descriptionToString(pane.find(".ct-action-detail__description, .ct-spell-detail__description, .ct-item-detail__description, .ddbc-action-detail__description, .ddbc-spell-detail__description, .ddbc-item-detail__description, div[class*='styles_description']"));
 
     // Look for all the roll orders
     for (const rollOrder of rollOrderTypes) {
@@ -1853,7 +1972,7 @@ function displayPanel(paneClass) {
             return displayTrait();
         else if (["b20-action-pane", "ct-custom-action-pane", "b20-custom-action-pane"].includes(paneClass))
             return displayAction(paneClass);
-        else if (paneClass == "ct-background-pane")
+        else if (paneClass == "b20-background-pane")
             return displayBackground();
         else
             alertify.alert("Not recognizing the currently open sidebar");
@@ -1874,14 +1993,21 @@ function findModifiers(character, custom_roll) {
             // If text length changes, we can check again for another modifier;
             text_len = text.length;
 
-            find_static_modifier = (name, value, {add_your=true}={}) => {
-                const mod_string = add_your ? " + your " + name : name;
-                if (text.toLowerCase().startsWith(mod_string)) {
-                    strong.append(text.substring(0, mod_string.length));
-                    roll_formula += " + " + value;
-                    text = text.substring(mod_string.length);
+            find_static_modifier = (name, value, { add_your = true } = {}) => {
+                // Define the modifier strings to check
+                const mod_strings = add_your 
+                    ? [` + your ${name}`, ` plus your ${name}`] 
+                    : [name];
+                
+                for (const mod_string of mod_strings) {
+                    if (text.toLowerCase().startsWith(mod_string)) {
+                        strong.append(text.substring(0, mod_string.length));
+                        roll_formula += " + " + value;
+                        text = text.substring(mod_string.length);
+                        break; // Exit loop once a match is found
+                    }
                 }
-            }
+            };
 
             for (let ability of character._abilities)
                 find_static_modifier(ability[0].toLowerCase() + " modifier", ability[3]);
@@ -1891,6 +2017,7 @@ function findModifiers(character, custom_roll) {
                 find_static_modifier(" + half your " + class_name.toLowerCase() + " level", half_level, {add_your: false});
             }
             find_static_modifier("proficiency bonus", character._proficiency);
+            find_static_modifier(" + PB", character._proficiency, { add_your: false });
             find_static_modifier("ac", character._ac);
             find_static_modifier("armor class", character._ac);
 
@@ -1958,18 +2085,18 @@ function injectRollButton(paneClass) {
         addRollButtonEx(paneClass, ".ct-sidebar__heading", { image: false });
         const name = $(".ct-sidebar__heading").text();
         checkAndInjectDiceToRolls("." + paneClass + " .ct-snippet__content,." + paneClass + " .ddbc-snippet__content", name);
-    } else if (paneClass === "ct-background-pane") {
+    } else if (paneClass === "b20-background-pane") {
         if (isRollButtonAdded())
             return;
         addRollButtonEx(paneClass, ".ct-sidebar__heading", { image: false });
         const name = $(".ct-sidebar__heading").text();
-        checkAndInjectDiceToRolls("." + paneClass + " .ct-background-pane__description", name);
+        checkAndInjectDiceToRolls(`.${paneClass} .ct-background-pane__description, div[class*='styles_pane'] .ddbc-html-content`, name);
     } else if (paneClass == "ct-trait-pane") {
         if (isRollButtonAdded())
             return;
-        addRollButtonEx(paneClass, ".ct-trait-pane__content", { image: false });
+        addRollButtonEx(paneClass, ".ct-sidebar__heading", { image: false });
     } else if (paneClass == "ct-item-pane") {
-        const item_name = $(".ct-item-pane .ct-sidebar__heading .ct-item-name,.ct-item-pane .ct-sidebar__heading .ddbc-item-name").text();
+        const item_name = $(".ct-item-pane .ct-sidebar__heading .ct-item-name,.ct-item-pane .ct-sidebar__heading .ddbc-item-name, .ct-item-pane .ct-sidebar__heading span[class*='styles_itemName']").text();
         if (isRollButtonAdded() && item_name == lastItemName)
             return;
         lastItemName = item_name;
@@ -2011,7 +2138,7 @@ function injectRollButton(paneClass) {
         if (isRollButtonAdded())
             return;
 
-        const properties = propertyListToDict($("." + paneClass + " .ct-action-detail [role=list] > div"));
+        const properties = propertyListToDict($(`.${paneClass} [role=list] > div, .${paneClass} .ct-action-detail [role=list] > div`));
         const action_name = $(".ct-sidebar__heading").text();
         const action_parent = $(".ct-sidebar__header-parent").text();
         const to_hit = properties["To Hit"] !== undefined && properties["To Hit"] !== "--" ? properties["To Hit"] : null;
@@ -2098,15 +2225,15 @@ function injectRollButton(paneClass) {
                 return
             removeRollButtons(pane);
         }
-    } else if (paneClass == "ct-health-manage-pane") {
-        const deathsaves = $(".ct-health-manage-pane .ct-health-manager__deathsaves");
+    } else if (paneClass == "b20-health-manage-pane") {
+        const deathsaves = $(".b20-health-manage-pane .ct-health-manager__deathsaves, .b20-health-manage-pane div[class*='styles_deathSavesGroups']");
         if (deathsaves.length > 0) {
             if (isRollButtonAdded(deathsaves) || isCustomRollIconsAdded(deathsaves))
                 return;
             
             // Check for Advantage/Disadvantage Badges, as Lineages: Reborn advantage on Death Saves or similar will supply
-            const skill_badge_adv = $(".ct-health-manage-pane .ct-health-manager__deathsaves .ddbc-advantage-icon").length > 0;
-            const skill_badge_disadv = $(".ct-health-manage-pane .ct-health-manager__deathsaves .ddbc-disadvantage-icon").length > 0;
+            const skill_badge_adv = $(".b20-health-manage-pane .ct-health-manager__deathsaves .ddbc-advantage-icon, .b20-health-manage-pane div[class*='styles_diceAdjustments'] span[class*='ddbc-advantage-icon']").length > 0;
+            const skill_badge_disadv = $(".b20-health-manage-pane .ct-health-manager__deathsaves .ddbc-disadvantage-icon, .b20-health-manage-pane div[class*='styles_diceAdjustments'] span[class*='ddbc-disadvantage-icon']").length > 0;
             let deathSaveRollType = RollType.NORMAL;
             if (skill_badge_adv && skill_badge_disadv) {
                 deathSaveRollType = RollType.QUERY;
@@ -2141,17 +2268,17 @@ function injectRollButton(paneClass) {
                     "modifier": modifier,
                     "advantage": deathSaveRollType
                 })
-            }, ".ct-health-manager__deathsaves-group--fails", { custom: true });
+            }, ".b20-health-manage-pane div[class*='styles_deathSavesGroups'] div[class*='styles_container']:first", { custom: true });
         }
-    } else if (paneClass == "ct-creature-pane") {
+    } else if (paneClass == "b20-creature-pane") {
         if (isRollButtonAdded() || isCustomRollIconsAdded()) {
             if (creature)
                 creature.updateInfo();
             return;
         }
-        const base = $(".ct-creature-block").length > 0 ? ".ct-creature-block" : ".ddbc-creature-block";
-        const creatureType = $(".ct-sidebar__header-parent").text();
-        creature = new Monster("Creature", base, settings, {creatureType, character});
+        const base = ".b20-creature-pane div[class*='styles_block']";
+        const creatureType = $(".ct-sidebar__header > div:first-child").text();
+        creature = new MonsterExtras("Creature", base, settings, {creatureType, character});
         creature.parseStatBlock();
         creature.updateInfo();
     } else if (paneClass == "ct-vehicle-pane") {
@@ -2161,8 +2288,8 @@ function injectRollButton(paneClass) {
         monster = new Monster("Extra-Vehicle", base, settings, {character});
         monster.parseStatBlock();
     } else if (paneClass == "ct-condition-manage-pane") {
-        const j_conditions = $(".ct-condition-manage-pane .ct-toggle-field--enabled,.ct-condition-manage-pane .ddbc-toggle-field--is-enabled").closest(".ct-condition-manage-pane__condition");
-        let exhaustion_level = $(".ct-condition-manage-pane__condition--special .ct-number-bar__option--active,.ct-condition-manage-pane__condition--special .ddbc-number-bar__option--active").text();
+        const j_conditions = $(".ct-condition-manage-pane .ct-toggle-field--enabled,.ct-condition-manage-pane .ddbc-toggle-field--is-enabled, .ct-condition-manage-pane button[class*='styles_toggle'][class*='styles_checked']").closest(".ct-condition-manage-pane__condition");
+        let exhaustion_level = $(".ct-condition-manage-pane__condition--special .ct-number-bar__option--active,.ct-condition-manage-pane__condition--special .ddbc-number-bar__option--active, .ct-condition-manage-pane__condition--special button[class*='styles_bar'][class*='styles_active']").text();
         const conditions = [];
         for (let cond of j_conditions.toArray()) {
             const condition_name = $(cond).find(".ct-condition-manage-pane__condition-name").text();
@@ -2238,10 +2365,11 @@ function injectRollToSpellAttack() {
 
 function injectRollToSnippets() {
     const groups = $(`.ct-actions .ct-actions-list .ct-actions-list__activatable .ct-feature-snippet,
-                        .ct-features .ct-class-detail .ct-feature-snippet,
-                        .ct-features .ct-race-detail .ct-feature-snippet,
-                        .ct-features .ct-feats-detail .ct-feature-snippet`);
-
+                        .ct-actions div[class*='styles_activatable'] .ct-feature-snippet,
+                        .ct-features .ct-class-detail .ct-feature-snippet, .ct-features .ct-feature-snippet--class,
+                        .ct-features .ct-race-detail .ct-feature-snippet, .ct-features .ct-feature-snippet--racial-trait,
+                        .ct-features .ct-feats-detail .ct-feature-snippet, .ct-features .ct-feature-snippet--feat`);
+                        
     for (let group of groups.toArray()) {
         const snippet = $(group);
                 
@@ -2250,8 +2378,9 @@ function injectRollToSnippets() {
         // get modified.
         if (snippet.find(".ct-beyond20-custom-roll").length > 0)
             continue;
-        const name = snippet.find(".ct-feature-snippet__heading")[0].childNodes[0].textContent.trim();
-        const content = snippet.find(".ct-feature-snippet__content")
+
+        const name = snippet.find(".ct-feature-snippet__heading, div[class*='styles_heading']")[0].childNodes[0].textContent.trim();
+        const content = snippet.find(".ct-feature-snippet__content, div[class*='styles_content']");
         checkAndInjectDiceToRolls(content, name);
         // DDB now displays tooltips on the modifiers, so it's not "1d4+3" it's "1d4<span>+3</span>" which causes
         // Beyond20 to see it as two separate formulas, a "1d4" and a "+3" which rolls as "1d20 + 3"
@@ -2600,18 +2729,16 @@ function documentModified(mutations, observer) {
         "ct-custom-skill-pane",
         "ct-skill-pane",
         "ct-racial-trait-pane",
-        "ct-background-pane",
         "ct-trait-pane",
         "ct-item-pane",
         "ct-infusion-choice-pane",
         "ct-custom-action-pane",
         "ct-spell-pane",
         "ct-reset-pane",
-        "ct-health-manage-pane",
-        "ct-creature-pane",
         "ct-vehicle-pane",
         "ct-condition-manage-pane",
-        "ct-proficiencies-pane"
+        "ct-proficiencies-pane",
+        "ct-extra-manage-pane"
     ]
 
     const SPECIAL_PANES = {
@@ -2623,7 +2750,10 @@ function documentModified(mutations, observer) {
         feat: "b20-feat-pane",
         feature: "b20-class-feature-pane",
         racialTrait: "b20-racial-trait-pane",
-        character: "b20-character-manage-pane"
+        character: "b20-character-manage-pane",
+        creature: "b20-creature-pane",
+        background: "b20-background-pane",
+        healthManager: "b20-health-manage-pane"
     }
 
     function handlePane(paneClass) {
@@ -2653,13 +2783,14 @@ function documentModified(mutations, observer) {
             // the page is modified, giving us enoguh time to catch "Initiative" string and add the class name
             // to the div, before the text gets translated
             const initRegex = /\bInitiative\s\(([-+]?\d+)\)/i;
-            if (sidebar.parent().find(".ddbc-ability-score-manager").length > 0) {
+            if (sidebar.parent().find("svg[class*='ddbc-ability-icon']").length > 0 && sidebar.find("div[class*='styles_interactive']").length === 0) { // not saving throw
                 const paneClass = SPECIAL_PANES.ability;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
-            } else if (sidebar.find("svg[class*='ddbc-ability-icon']").length > 0) {
+            } else if (sidebar.parent().find("svg[class*='ddbc-ability-icon']").length > 0 && sidebar.find("div[class*='styles_interactive']").length > 0) {
                 // Saving throws have no specific class, but the preview icon has the ddbc-ability-icon class
                 // so we can use that to detect saving throws (excluding ability scores, already handled above)
+                // Also checking for saving throws text bit exist since dndbeyond added that.
                 const paneClass = SPECIAL_PANES.savingThrow;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
@@ -2689,7 +2820,21 @@ function documentModified(mutations, observer) {
                 const paneClass = SPECIAL_PANES.racialTrait;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
-            }
+            } else if (Array.from(sidebar.parent().find("h4, h5"))
+                    .some(e => e.textContent.includes("Suggested Characteristics"))) {
+                const paneClass = SPECIAL_PANES.background;
+                markPane(sidebar, paneClass);
+                handlePane(paneClass);
+            } else if (sidebar.parent().find("div[class*='styles_block'] section[class*='styles_creatureBlock']").length > 0) {
+                const paneClass = SPECIAL_PANES.creature;
+                markPane(sidebar, paneClass);
+                handlePane(paneClass);
+            } else if (Array.from(sidebar.parent().find("h1, h2"))
+                .some(e => e.textContent.includes("HP Management"))) {
+                    const paneClass = SPECIAL_PANES.healthManager;
+                    markPane(sidebar, paneClass);
+                    handlePane(paneClass);
+                }
         } else {
             // Special panes with now headers
             const avatarPane = $(".ct-sidebar__inner div[class*='styles_characterManagePane']");

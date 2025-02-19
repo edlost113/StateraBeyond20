@@ -21,6 +21,8 @@ const DNDBEYOND_PAGE_DEPS = [
     "src/dndbeyond/base/base.js",
     "src/dndbeyond/base/hotkeys.js",
     "src/dndbeyond/base/utils.js",
+    // Second renderer on DDB pages to allow rednering roll to the DOM
+    "src/generic-site/renderer.js",
 ];
 
 const SRC_FILES = {
@@ -32,6 +34,7 @@ const SRC_FILES = {
         "src/extension/background.js"
     ],
     options: [
+        "src/common/constants.js",
         "src/common/utils.js",
         "libs/FileSaver.min.js",
         "src/common/settings.js",
@@ -102,6 +105,7 @@ const SRC_FILES = {
         ...DNDBEYOND_PAGE_DEPS,
         "src/dndbeyond/base/spell.js",
         "src/dndbeyond/base/monster.js",
+        "src/dndbeyond/base/extras.js",
         "src/dndbeyond/content-scripts/monster.js",
     ],
     dndbeyond_encounter: [
@@ -120,6 +124,7 @@ const SRC_FILES = {
         ...DNDBEYOND_PAGE_DEPS,
         "src/dndbeyond/base/spell.js",
         "src/dndbeyond/base/monster.js",
+        "src/dndbeyond/base/extras.js",
         "src/dndbeyond/base/character.js",
         "src/dndbeyond/content-scripts/character.js",
     ],

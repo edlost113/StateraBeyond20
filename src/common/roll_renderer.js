@@ -61,6 +61,47 @@ class Beyond20RollRenderer {
         });
     }
 
+    async queryDoubleGeneric(title, question, choices, question2, choices2, select_id = "generic-query", order, order2, selection, selection2, {prefix=""}={}) {
+        let html = "<form>";
+        if (prefix) {
+            html += `<div class="beyond20-query-prefix">${prefix}</div>`;
+        }
+
+        // query one
+        html += `<div class="beyond20-form-row"><label>${question}</label><select id="${select_id}-one" name="${select_id}-one">`;
+
+        if (!order) order = Object.keys(choices);
+        for (let [i, option] of order.entries()) {
+            const isSelected = (selection && selection == option) || (!selection && i === 0);
+            const value = choices[option] || option;
+            html += `<option value="${option}"${isSelected ? " selected" : ""}>${value}</option>`;
+        }
+        html += `;</select></div>`;
+
+        // query two
+        html += `<div class="beyond20-form-row"><label>${question2}</label><select id="${select_id}-two" name="${select_id}-two">`;
+
+        if (!order2) order2 = Object.keys(choices2);
+        for (let [i, option] of order2.entries()) {
+            const isSelected = (selection2 && selection2 == option) || (!selection2 && i === 0);
+            const value = choices2[option] || option;
+            html += `<option value="${option}"${isSelected ? " selected" : ""}>${value}</option>`;
+        }
+        html += `;</select></div>`;
+        
+        html += `</form>`;
+        return new Promise((resolve) => {
+            this._prompter.prompt(title, html, "Roll").then((html) => {
+                if (html) {
+                    resolve([html.find("#" + select_id + "-one").val(), html.find("#" + select_id + "-two").val()]);
+                } else {
+                    // return null in case it got cancelled
+                    resolve(null);
+                }
+            });
+        });
+    }
+
     async queryAdvantage(title, reason="") {
         const choices = {
             [RollType.NORMAL]: "Normal Roll",
@@ -207,8 +248,8 @@ class Beyond20RollRenderer {
             roll_type_class += ' beyond20-roll-detail-discarded';
         if (is_total)
             roll_type_class += ' beyond20-roll-total dice-total';
-
-        const total = `<span class='${roll_type_class}'>${roll.total}</span>`;
+        const totalValue = Number.isInteger(roll.total) ? roll.total : roll.total.toFixed(2);
+        const total = `<span class='${roll_type_class}'>${totalValue}</span>`;
         const tooltip = await roll.getTooltip();
         return `<span class='beyond20-tooltip'>${total}<span class='dice-roll beyond20-tooltip-content'>` +
             `<div class='dice-formula beyond20-roll-formula'>${roll.formula}</div>${tooltip}</span></span>`;
@@ -380,6 +421,9 @@ class Beyond20RollRenderer {
             this._displayer.sendMessage(request, title, html, character, request.whisper, play_sound, source, attributes, description, json_attack_rolls, roll_info, json_damage_rolls, json_total_damages, open)
         } else if (canPostHTML) {
             this._displayer.postHTML(request, title, html, character, request.whisper, play_sound, source, attributes, description, json_attack_rolls, roll_info, json_damage_rolls, json_total_damages, open);
+            if (this._displayer.sendMessageToDOM) {
+                this._displayer.sendMessageToDOM(request, title, html, character, request.whisper, play_sound, source, attributes, description, json_attack_rolls, roll_info, json_damage_rolls, json_total_damages, open)
+            } 
         }
 
         if (attack_rolls.length > 0) {
@@ -459,7 +503,12 @@ class Beyond20RollRenderer {
         const {rolls} = this.getToHit(request, "", data, type)
         await this._roller.resolveRolls(title, rolls, request);
         this.processToHitAdvantage(request.advantage, rolls);
-        return this.postDescription(request, title, null, {}, null, rolls);
+
+        const roll_info = [];
+        if (Array.isArray(request["effects"]) && request["effects"].length > 0)
+            roll_info.push(["Effects", request["effects"].join(', ')]);
+
+        return this.postDescription(request, title, null, {}, null, rolls, roll_info);
     }
 
     async rollSkill(request, custom_roll_dice = "") {
@@ -579,7 +628,6 @@ class Beyond20RollRenderer {
                 }
             }
         
-
             await this._roller.resolveRolls(request.name, all_rolls, request)
             
             // Moved after the new resolveRolls so it can access the roll results
@@ -674,6 +722,69 @@ class Beyond20RollRenderer {
                     }
                 }
             }
+            
+            // Process Sorcerous Burst after critical hits so we can deploy bursts out of the critical
+            // damage dice as well.
+            if (request.name.includes("Sorcerous Burst")) {
+                const mods = request.character.spell_modifiers;
+                const sorcererMod = Object.keys(mods).find(x => x.toLowerCase() === "sorcerer");
+                const mainDamage = damage_rolls.find((roll) => roll[2] === DAMAGE_FLAGS.REGULAR);
+                const critDamage = damage_rolls.find((roll) => roll[2] === (DAMAGE_FLAGS.REGULAR | DAMAGE_FLAGS.CRITICAL));
+                const critRule = parseInt(this._settings["critical-homebrew"] || CriticalRules.PHB);
+                const doubleForCrit = is_critical && [CriticalRules.PHB, CriticalRules.HOMEBREW_REROLL, CriticalRules.HOMEBREW_MOD].includes(critRule);
+
+                const faces = parseInt(mainDamage[1].dice[0].faces);
+                let burstCount = mainDamage[1].dice[0].rolls.filter(x => x.roll === faces).length;
+                if (critRule !== CriticalRules.HOMEBREW_MAX && critDamage) {
+                    burstCount += critDamage[1].dice[0].rolls.filter(x => x.roll === faces).length;
+                }
+                
+                if (burstCount > 0) {
+                    // Determine the selected modifier, prompt only if multiple options and no sorcerer
+                    let selectedModifier = sorcererMod || Object.keys(mods)[0];
+                    if (!sorcererMod && Object.keys(mods).length > 1) {
+                        const result = await this.queryGeneric("Spellcasting Ability Modifier", "Burst Ability Modifier", Object.keys(mods));
+                        selectedModifier = result !== null ? Object.keys(mods)[result] : Object.keys(mods)[0];
+                    }
+                    let burstRollsLeft = parseInt(mods[selectedModifier]);
+          
+                    const rollBurstDamage = async (burst) => {
+                        if (burstRollsLeft <= 0) {
+                            return [];
+                        }
+                        burst = Math.min(burst, burstRollsLeft);
+                        burstRollsLeft -= burst;
+                        const amount = doubleForCrit ? burst * 2 : burst;
+                        const burstRoll = this._roller.roll(`${amount}d${faces}`);
+                        burstRoll.setRollType("damage");
+                        const rolls = [burstRoll];
+                        await this._roller.resolveRolls(request.name, rolls, request);
+                        const newBurstCount = burstRoll.dice[0].rolls.filter(x => x.roll === faces).length;
+                        if (newBurstCount > 0) {
+                            rolls.push(...await rollBurstDamage(newBurstCount));
+                        }
+                        return rolls;
+                    }
+                    const burstRolls = await rollBurstDamage(burstCount);
+                    let burstRollCount = 1;
+                    let burstCriticalAmount = 0;
+                    for (let burstRoll of burstRolls) {
+                        damage_rolls.push([`Burst (${burstRollCount++})`, burstRoll, DAMAGE_FLAGS.ADDITIONAL]);
+                        // Accumulate critical damage if needed
+                        if (is_critical && critRule === CriticalRules.HOMEBREW_MAX) {
+                            burstCriticalAmount += burstRoll.dice.reduce((sum, die) => sum + (die.amount * die.faces), 0);
+                        }
+                    }
+
+                    // Handle critical burst damage roll if needed
+                    if(is_critical && critRule === CriticalRules.HOMEBREW_MAX && burstCriticalAmount > 0) {
+                        const criticalRoll = this._roller.roll(burstCriticalAmount.toString());
+                        criticalRoll.setRollType("critical-damage");
+                        damage_rolls.push([`Burst Critical`, criticalRoll, DAMAGE_FLAGS.ADDITIONAL | DAMAGE_FLAGS.CRITICAL]);
+                        await this._roller.resolveRolls(request.name, [criticalRoll], request);
+                    }
+                }
+            }
         } else {
             // If no damages, still need to resolve to hit rolls
             
@@ -712,8 +823,14 @@ class Beyond20RollRenderer {
         }
 
         const roll_info = [];
+        if (request["effects"] !== undefined)
+            roll_info.push(["Effects", request["effects"].join(', ')]);
+        if (request["mastery"] !== undefined)
+            roll_info.push(["Mastery", request["mastery"]]);
         if (request["save-dc"] != undefined)
             roll_info.push(["Save", request["save-ability"] + " DC " + request["save-dc"]]);
+        if (request["cunning-strike-effects"] != undefined)
+            roll_info.push(["Cunning Strike Effects", request["cunning-strike-effects"]]);
 
         return this.postDescription(request, request.name, null, data, request.description || "", to_hit, roll_info, damage_rolls);
     }
@@ -783,10 +900,14 @@ class Beyond20RollRenderer {
                 }
             }
         }
-
+        if (request["effects"] !== undefined)
+            roll_info.push(["Effects", request["effects"].join(', ')]);
+        if (request["mastery"] !== undefined)
+            roll_info.push(["Mastery", request["mastery"]]);
         if (request["save-dc"] !== undefined)
             roll_info.push(["Save", request["save-ability"] + " DC " + request["save-dc"]]);
-
+        if (request["cunning-strike-effects"] != undefined)
+            roll_info.push(["Cunning Strike Effects", request["cunning-strike-effects"]]);
 
         const [attack_rolls, damage_rolls] = await this.buildAttackRolls(request, custom_roll_dice);
 

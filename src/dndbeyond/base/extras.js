@@ -1,18 +1,13 @@
-class Monster extends CharacterBase {
+class MonsterExtras extends CharacterBase {
     constructor(_type, base = null, global_settings = null, {character, creatureType}={}) {
         super(_type, global_settings);
         if (this.type() == "Monster") {
-            this._base = ".mon-stat-block";
-        } else if (this.type() == "Creature") {
-            this._base = ".ct-creature-block";
-        } else if (this.type() == "Vehicle" || this.type() == "Extra-Vehicle") {
-            this._base = ".vehicle-stat-block";
-        } else {
-            this._base = ".mon-stat-block";
+            this._base = ".mon-stat-block-2024";
         }
         if (base) {
             this._base = base;
         }
+        this._prefix = "monster_extras_";
         this._creatureType = creatureType;
         this._parent_character = character;
         this._stat_block = $(this._base);
@@ -21,7 +16,9 @@ class Monster extends CharacterBase {
         this._avatar = null;
         this._meta = null;
         this._attributes = {}
+        this._initiative = null;
         this._ac = null;
+        this._ac_meta = null;
         this._hp = null;
         this._hp_formula = null;
         this._max_hp = 0;
@@ -34,17 +31,15 @@ class Monster extends CharacterBase {
         this._spells = {}
         this._cr = null;
     }
+
+    // ddbc-creature-block styles_creatureBlock__OEQz9 blockfinder
     
     getSetting(key, default_value = "", settings = null) {
         // Use parent's settings for wild shape creatures
-        if (this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character) {
+        if (this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character) {
             return this._parent_character.getSetting(key, default_value, settings);
         }
         return super.getSetting(key, default_value, settings);
-    }
-
-    get isBlockFinder() {
-        return this._base.includes(".stat-block-finder") || this._base.includes(".vehicle-block-finder");
     }
 
     parseStatBlock(stat_block) {
@@ -52,129 +47,204 @@ class Monster extends CharacterBase {
         const inject_descriptions = this.getGlobalSetting('subst-dndbeyond-stat-blocks', true);
         const beyond20_tooltip = add_dice || inject_descriptions ? getQuickRollTooltip() : null;
         const base = this._base;
+        const classNames = {};
         if (!stat_block)
             stat_block = $(base);
 
         this._stat_block = stat_block;
-        if (this.type() != "Creature" && this.type() != "Extra-Vehicle") {
-            stat_block.find(".ct-beyond20-settings-button").remove();
-            const quick_settings = E.div({ class: "ct-beyond20-settings-button", style: "background-color: rgba(0, 0, 0, 0.1)" },
-                E.img({ class: "ct-beyond20-settings", src: chrome.runtime.getURL("images/icons/icon32.png"), style: "vertical-align: top;" }),
-                E.span({ class: "ct-beyond20-settings-button-label mon-stat-block__tidbit mon-stat-block__tidbit-label", style: "font-size: 28px; margin: 5px;" }, "Beyond 20")
-            );
-            if (this.isBlockFinder) {
-                stat_block.find(".Stat-Block-Styles_Stat-Block-Title").prepend(quick_settings);
-            } else {
-                stat_block.find(`${base}__header`).prepend(quick_settings);
-            }
-            $(quick_settings).on('click', (event) => alertQuickSettings());
-        }
-        if (this.isBlockFinder) {
-            this._name = stat_block.find(".Stat-Block-Styles_Stat-Block-Title").text().trim();
-        } else {
-            this._name = stat_block.find(base + "__name").text().trim();
-        }
-        const link = this.isBlockFinder ?
-            stat_block.find(".Stat-Block-Styles_Stat-Block-Title a") :
-            stat_block.find(base + "__name-link");
-        if (link.length > 0) {
-            this._url = link[0].href;
-            this._id = this._url.replace("/monsters/", "").replace("/vehicles/", "");
-        } else {
-            this._url = window.location.href;
-            this._id = this._name;
-        }
-        if (this.isBlockFinder) {
-            this._meta = stat_block.find(".Stat-Block-Styles_Stat-Block-Metadata").text().trim();
-        } else {
-            this._meta = stat_block.find(base + "__meta").text().trim();
-        }
-        const avatar = $(".details-aside .image a");
+        this._name = stat_block.find("section[class*='styles_creatureBlock'] > h1[class*='styles_header'], .mon-stat-block-2024__name-link").text().trim();
+        this._id = this._name;
+
+        const link = stat_block.find(".mon-stat-block-2024__name-link");
+
+        this._url = stat_block.find(".mon-stat-block-2024__name-link").length != 0 ? link.href : window.location.href;
+        this._meta = stat_block.find("section[class*='styles_creatureBlock'] > p[class*='styles_meta'], .mon-stat-block-2024__meta").text().trim();
+
+        const avatar = $(base).parent().find("img[class*='styles_img'], div.image > a > img.monster-image");
+        const asideAvatar = $(base).parent().parent().find(".details-aside > div > a > img.monster-image");
         if (avatar.length > 0) {
-            this._avatar = avatar[0].href;
-            const avatarImg = $(".details-aside .image");
-            if (avatarImg)
-                addDisplayButton(() => this.displayAvatar(), avatarImg, { small: false, image: true });
-        }
-        const attributes = this.isBlockFinder ?
-            stat_block.find(".Stat-Block-Styles_Stat-Block-Data") :
-            stat_block.find(`${base}__attributes ${base}__attribute`);
-        for (let attr of attributes.toArray()) {
-            let label;
-            let value;
-            if (this.isBlockFinder) {
-                label = $(attr).find("strong").text().trim();
-                // Use contents() to get text nodes, then skip the first element
-                value = $(attr).contents().slice(1).text().trim();
-            } else {
-                label = $(attr).find(base + "__attribute-label").text().trim();
-                value = $(attr).find(base + "__attribute-value").text().trim();
-            }
-            if (value == "")
-                value = $(attr).find(base + "__attribute-data").text().trim();
-            if (label == "Armor Class") {
-                if (this.isBlockFinder) {
-                    const match = value.match(/([0-9]+)/);
-                    this._ac = match ? match[1] : value;
-                } else {
-                    this._ac = $(attr).find(base + "__attribute-data-value").text().trim();
-                }
-            } else if (label == "Hit Points") {
-                if (this.isBlockFinder) {
-                    const match = value.match(/([0-9]+)\s*(?:\((.*)\))?/);
-                    this._hp = match ? match[1] : value;
-                    this._hp_formula = match ? match[2] : value;
-                } else {
-                    this._hp = $(attr).find(base + "__attribute-data-value").text().trim();
-                    const formula = $(attr).find(base + "__attribute-data-extra");
-                    this._hp_formula = formula.text().trim().slice(1, -1);
-                }
-                if (add_dice) {
-                    const digitalDiceBox = $(attr).find(base + "__attribute-data-extra .integrated-dice__container");
-                    if (digitalDiceBox.length > 0) {
-                        // Use the digital Dice box (encounters page)
-                        digitalDiceBox.off('click').on('click', (e) => {
-                            e.stopPropagation();
-                            this.rollHitPoints();
-                        })
-                        deactivateTooltipListeners(digitalDiceBox);
-                        activateTooltipListeners(digitalDiceBox, "right", beyond20_tooltip, () => this.rollHitPoints());
-                    } else {
-                        if (this.isBlockFinder) {
-                            addIconButton(this, () => this.rollHitPoints(), $(attr), {custom: true, append: true});
-                        } else {
-                            addIconButton(this, () => this.rollHitPoints(), $(attr).find(base + "__attribute-data-extra"), {custom: true});
-                        }
-                    }
-                }
-            } else if (label == "Speed") {
-                this._speed = value;
-            }
-            this._attributes[label] = value;
+            this._avatar = avatar[0].src;
+            addDisplayButton(() => this.displayAvatar(), avatar, { append: false, small: false, image: true });
+            addDisplayButton(() => this.displayAvatar(), asideAvatar, { append: false, small: false, image: true });
         }
 
-        let abilities = stat_block.find(base + "__abilities");
-        let prefix = `${base}__ability-`
-        let initiative_selector = base + "__beyond20-roll-initiative";
-        if (abilities.length > 0) {
-            abilities = abilities.find("> div");
-        } else {
-            if (this.isBlockFinder) {
-                abilities = stat_block.find(".stat-block-ability-scores > div");
-                prefix = ".stat-block-ability-scores-";
-                initiative_selector = ".block-finder__beyond20-roll-initiative"
-            } else {
-                abilities = stat_block.find(".ability-block > div");
-                prefix = ".ability-block__";
+        // Attributes, tidbits
+
+        const attributes = stat_block.find("div[class*='styles_attribute__'], .mon-stat-block-2024__attribute, .mon-stat-block-2024__tidbit");
+        for (let attr of attributes.toArray()) {
+            const labels = $(attr).find("h2[class*='styles_attributeLabel'], .mon-stat-block-2024__attribute-label, .mon-stat-block-2024__tidbit-label");
+            const data = $(attr).find("p, span.mon-stat-block-2024__attribute-data-value, span.mon-stat-block-2024__tidbit-data");
+                       
+            for (const [index, lvalue] of labels.toArray().entries()) {
+                const label = $(lvalue).text().trim();
+                const value = $(data[index]).text().trim();
+
+                classNames["attribute"] = $(attr).attr("class");
+                classNames["label"] = $(attr).find("h2[class*='styles_attributeLabel'], span:first").attr("class");
+
+                const digitalDiceBoxes = data.find(".integrated-dice__container");
+
+                const addAttribute = (label, data) => this._attributes[label] = [...$(data)].map(m => $(m).text().trim()).filter(Boolean).join(", ");
+                const addTidbits = (label, data) => this._tidbits[label] = $(data).text().trim();
+
+                if (["Armor Class", "AC"].includes(label)) {
+                    if(data.length != 0) {
+                        const acValues = value.split(' ');
+                        this._ac = acValues[0];
+                        this._ac_meta = acValues.length > 1 ? acValues[1].replace(/^\(|\)$/g, '') : undefined;
+
+                        addAttribute(label, data[index]);
+                    }
+                    // add wild shape 2024 feature here if the player has the class level
+                } else if (["Hit Points", "HP"].includes(label)) {
+                    if(data.length != 0) {
+                        const hpValues = value.split(' ');
+                        this._hp = hpValues[0];
+                        this._hp_formula = hpValues.length > 1 ? value.split(' ')[1].replace(/[()]/g, '') : undefined;
+
+                        if(!this._hp_formula) {
+                            const formula = $(attr).find(".mon-stat-block-2024__attribute-data-extra").text().trim();
+                            this._hp_formula = formula.replace(/[()]/g, '');
+                        }
+                        
+                        if (add_dice && this._hp_formula) {
+                            const digitalDiceBox = $(attr).find(this._prefix + "__attribute-data-extra .integrated-dice__container");
+                            if (digitalDiceBox.length > 0) {
+                                // Use the digital Dice box (encounters page)
+                                digitalDiceBox.off('click').on('click', (e) => {
+                                    e.stopPropagation();
+                                    this.rollHitPoints();
+                                })
+                                deactivateTooltipListeners(digitalDiceBox);
+                                activateTooltipListeners(digitalDiceBox, "right", beyond20_tooltip, () => this.rollHitPoints());
+                            } else {
+                                if (this.isBlockFinder) {
+                                    addIconButton(this, () => this.rollHitPoints(), $(attr), {custom: true, append: true});
+                                } else {
+                                    const monsterPage = this.type() == "Monster";
+                                    addIconButton(this, () => this.rollHitPoints(), monsterPage ? $(attr).find(".mon-stat-block-2024__attribute-data-extra") : $(data[index]), {custom: true});
+                                }
+                            }
+                        }
+                        addAttribute(label, data[index]);
+                    }
+            
+                } else if (["Initiative"].includes(label)) {
+                    if(data.length != 0) {
+                        const initValues = value.split(' ');
+                        this._initiative = initValues[0];
+                                            
+                        if (add_dice) {
+                            const digitalDiceBox = $(attr).find(this._prefix + "__attribute-data-extra .integrated-dice__container");
+                            if (digitalDiceBox.length > 0) {
+                                // Use the digital Dice box (encounters page)
+                                digitalDiceBox.off('click').on('click', (e) => {
+                                    e.stopPropagation();
+                                    this.rollInitiative();
+                                })
+                                deactivateTooltipListeners(digitalDiceBox);
+                                activateTooltipListeners(digitalDiceBox, "right", beyond20_tooltip, () => this.rollInitiative());
+                            } else {
+                                if (this.isBlockFinder) {
+                                    addIconButton(this, () => this.rollInitiative(), $(attr), {custom: true, append: true});
+                                } else {
+                                    addIconButton(this, () => this.rollInitiative(), $(data[index]), {custom: true});
+                                }
+                            }
+                        }
+                        addAttribute(label, data[index]);
+                    }
+                } else if (label == "Speed") {
+                    this._speed = value;
+                    addAttribute(label, data[index]);
+                } else if (label == "Saving Throws") { // 2014 ONLY
+                    const saves = value.split(", ");
+                    const useDigitalDice = digitalDiceBoxes.length === saves.length;
+                    if (add_dice && !useDigitalDice) data.html("");
+                    for (let save of saves) {
+                        const parts = save.split(" ");
+                        const abbr = parts[0];
+                        const mod = parts.slice(1).join(" ");
+                        this._saves[abbr] = mod;
+                        if (useDigitalDice) {
+                            // Hook into the existing digital dice boxes
+                            const idx = saves.indexOf(save);
+                            const digitalDiceBox = digitalDiceBoxes.eq(idx);
+                            // Use the digital Dice box (encounters page)
+                            digitalDiceBox.off('click').on('click', (e) => {
+                                e.stopPropagation();
+                                this.rollSavingThrow(abbr);
+                            })
+                            deactivateTooltipListeners(digitalDiceBox);
+                            activateTooltipListeners(digitalDiceBox, "down", beyond20_tooltip, () => this.rollSavingThrow(abbr));
+                        } else if (add_dice) {
+                            data.append(abbr + " " + mod);
+                            addIconButton(this, () => this.rollSavingThrow(abbr), data, { append: true });
+                            if (saves.length > Object.keys(this._saves).length)
+                                data.append(", ");
+                        }
+                    }
+                    addTidbits(label, data[index]);
+                } else if (label == "Skills") {
+                    const skills = value.split(", ");
+                    const useDigitalDice = digitalDiceBoxes.length === skills.length;
+                    for (let skill of skills) {
+                        const match = skill.match(/(.+?)([+-]?)\s*([0-9]+)/);
+                        if (match) {
+                            const name = match[1].trim();
+                            const mod = `${match[2] || "+"}${match[3]}`;
+                            this._skills[name] = mod;
+                            // Hook into the existing digital dice boxes
+                            if (useDigitalDice) {
+                                const idx = skills.indexOf(skill);
+                                const digitalDiceBox = digitalDiceBoxes.eq(idx);
+                                // Use the digital Dice box (encounters page)
+                                digitalDiceBox.off('click').on('click', (e) => {
+                                    e.stopPropagation();
+                                    this.rollSkillCheck(name)
+                                })
+                                deactivateTooltipListeners(digitalDiceBox);
+                                activateTooltipListeners(digitalDiceBox, "down", beyond20_tooltip, () => this.rollSkillCheck(name));
+                            }
+                        }
+                    }
+                    if (useDigitalDice || !add_dice)
+                        continue;
+                    data.html("");
+                    let first = true;
+                    for (let skill in this._skills) {
+                        if (!first)
+                            data.append(", ");
+                        first = false;
+                        data.append(skill + " " + this._skills[skill]);
+                        addIconButton(this, () => this.rollSkillCheck(skill), data, { append: true });
+                    }
+                    addTidbits(label, data[index]);
+                } else if (label == "Challenge") {
+                    this._cr = value.split(" ")[0];
+                    addTidbits(label, data[index]);
+                } // TODO add immunities, senses, languages, cr
             }
         }
+
+        // Abilities
+        const abilities = stat_block.find("div[class*='styles_stats'] > div[class*='styles_stat'], div[class*='styles_stats'] table[class*='styles_statTable'] tbody > tr, div[class*='mon-stat-block-2024__stats'] table[class*='stat-table'] tbody > tr");
+        let initiative_selector = this._prefix + "__beyond20-roll-initiative";
         for (let ability of abilities.toArray()) {
-            const abbr = $(ability).find(prefix + "heading").text().toUpperCase();
-            const score = $(ability).find(prefix + "score").text();
-            const modifier = $(ability).find(prefix + "modifier").text().slice(1, -1);
+            const abbr = $(ability).find("h2[class*='styles_statHeading'], th").text().toUpperCase();
+            const score = $(ability).find("p[class*='styles_statScore']").text() || $(ability).find("td:first").text();
+            const modifier = $(ability).find("p[class*='styles_statModifier']").text().slice(1, -1) || $(ability).find("td[class*='styles_modifier']:first, td[class*='modifier']:first").text();
+            const save = $(ability).find("td[class*='styles_modifier']:last, td[class*='modifier']:last").text();
+            const is2024StatBlock = save ? true : false;
+
             this._abilities.push([abbreviationToAbility(abbr), abbr, score, modifier]);
+            if(is2024StatBlock) {
+                this._saves[abbr] = save;
+            }
             if (add_dice) {
-                const digitalDiceBox = $(ability).find(prefix + "modifier .integrated-dice__container");
+                const elementAbilityDiceRoll = is2024StatBlock ? $(ability).find("td[class*='styles_modifier']:first, td[class*='modifier']:first") : ability;
+                const elementSaveDiceRoll = $(ability).find("td[class*='styles_modifier']:last, td[class*='modifier']:last");
+                const digitalDiceBox = $(ability).find(this._prefix + "modifier .integrated-dice__container");
                 if (digitalDiceBox.length > 0) {
                     // Use the digital Dice box (encounters page)
                     digitalDiceBox.off('click').on('click', (e) => {
@@ -184,15 +254,18 @@ class Monster extends CharacterBase {
                     deactivateTooltipListeners(digitalDiceBox);
                     activateTooltipListeners(digitalDiceBox, "down", beyond20_tooltip, () => this.rollAbilityCheck(abbr));
                 } else {
-                    addIconButton(this, () => this.rollAbilityCheck(abbr), ability, { prepend: true });
+                    const margins = this.type() == "Monster";
+                    addIconButton(this, () => this.rollAbilityCheck(abbr), elementAbilityDiceRoll, { prepend: !is2024StatBlock, append: is2024StatBlock, margins: margins });
+                    if(is2024StatBlock) {
+                        addIconButton(this, () => this.rollSavingThrow(abbr), elementSaveDiceRoll, { append: true, margins: margins });
+                    }
                 }
                 if (abbr == "DEX") {
                     let roll_initiative = stat_block.find(initiative_selector);
-                    const attributes = this.isBlockFinder ? 
-                        stat_block.find(".red-statblock-text") :
-                        stat_block.find(base + "__attributes");
-                    if (attributes.length > 0) {
+                    const lastAttribute = stat_block.find("div[class*='styles_attribute__']").last();
+                    if (lastAttribute.length > 0) {
                         let initiative = roll_initiative.eq(0);
+                        this._initiative = this._initiative || modifier;
                         // Make sure the modifier didn't change (encounters)
                         if (roll_initiative.length > 0 && roll_initiative.attr("data-modifier") !== modifier) {
                             initiative = null;
@@ -203,169 +276,34 @@ class Monster extends CharacterBase {
                             if (this.isBlockFinder) {
                                 initiative = $(
                                     E.p({ class: `Stat-Block-Styles_Stat-Block-Data ${initiative_selector.slice(1)}`,
-                                            "data-modifier": modifier },
+                                            "data-modifier": this._initiative },
                                         E.strong({ class: `block-finder-attribute-label` }, "Roll Initiative!"),
-                                        E.span({ class: `block-finder-data` }, "  " + modifier)
+                                        E.span({ class: `block-finder-data` }, "  " + this._initiative)
                                     )
                                 );
                             } else { 
-                                const attribute_prefix = `${base.slice(1)}__attribute`
+                                const attribute_prefix = `${this._prefix}__attribute`
                                 initiative = $(
-                                    E.div({ class: `${attribute_prefix} ${initiative_selector.slice(1)}`,
-                                            "data-modifier": modifier },
-                                        E.span({ class: `${attribute_prefix}-label` }, "Roll Initiative!"),
+                                    E.div({ class: `${attribute_prefix} ${initiative_selector} ${classNames["attribute"]}`,
+                                            "data-modifier": this._initiative },
+                                        E.strong({ class: `${attribute_prefix}-label ${classNames["label"]}` }, "Roll Initiative!"),
                                         E.span({ class: `${attribute_prefix}-data` },
-                                            E.span({ class: `${attribute_prefix}-data-value` }, "  " + modifier)
+                                            E.span({ class: `${attribute_prefix}-data-value ${classNames["value"]}` }, "  " + this._initiative)
                                         )
                                     )
                                 );
                             }
                         }
-                        attributes.eq(0).append(initiative);
+                        lastAttribute.after(initiative);
                         addIconButton(this, () => this.rollInitiative(), initiative, { append: true });
                     }
                 }
             }
         }
 
-
-        const tidbits = this.isBlockFinder ? 
-            stat_block.find(".red-statblock-text").eq(1).find(".Stat-Block-Styles_Stat-Block-Data") : 
-            stat_block.find(base + "__tidbits " + base + "__tidbit");
-        for (let tidbit of tidbits.toArray()) {
-            let label;
-            let data;
-            if (this.isBlockFinder) {
-                label = $(tidbit).find("strong").text().trim();
-                // Use contents() to get text nodes, then skip the first element
-                data = $(tidbit).contents().slice(1);
-            } else {
-                label = $(tidbit).find(base + "__tidbit-label").text().trim();
-                data = $(tidbit).find(base + "__tidbit-data");
-            }
-            const digitalDiceBoxes = data.find(".integrated-dice__container");
-            const value = data.text().trim();
-            if (label == "Saving Throws") {
-                const saves = value.split(", ");
-                const useDigitalDice = digitalDiceBoxes.length === saves.length;
-                if (add_dice && !useDigitalDice) {
-                    data.html("");
-                    // For block finder, we don't have any elements, instead we have text nodes
-                    if (this.isBlockFinder) {
-                        data = data.addBack().each((idx, el) => {
-                            // Remove text nodes
-                            if (el.nodeType === 3) {
-                                el.remove();
-                            }
-                        }).parent();
-                        data.append(" ");
-                    }
-                }
-                for (let save of saves) {
-                    const parts = save.split(" ");
-                    const abbr = parts[0];
-                    const mod = parts.slice(1).join(" ");
-                    this._saves[abbr] = mod;
-                    if (useDigitalDice) {
-                        // Hook into the existing digital dice boxes
-                        const idx = saves.indexOf(save);
-                        const digitalDiceBox = digitalDiceBoxes.eq(idx);
-                        // Use the digital Dice box (encounters page)
-                        digitalDiceBox.off('click').on('click', (e) => {
-                            e.stopPropagation();
-                            this.rollSavingThrow(abbr);
-                        })
-                        deactivateTooltipListeners(digitalDiceBox);
-                        activateTooltipListeners(digitalDiceBox, "down", beyond20_tooltip, () => this.rollSavingThrow(abbr));
-                    } else if (add_dice) {
-                        data.append(abbr + " " + mod);
-                        addIconButton(this, () => this.rollSavingThrow(abbr), data, { append: true });
-                        if (saves.length > Object.keys(this._saves).length)
-                            data.append(", ");
-                    }
-                }
-            } else if (label == "Skills") {
-                const skills = value.split(", ");
-                const useDigitalDice = digitalDiceBoxes.length === skills.length;
-                for (let skill of skills) {
-                    const match = skill.match(/(.+?)([+-]?)\s*([0-9]+)/);
-                    if (match) {
-                        const name = match[1].trim();
-                        const mod = `${match[2] || "+"}${match[3]}`;
-                        this._skills[name] = mod;
-                        // Hook into the existing digital dice boxes
-                        if (useDigitalDice) {
-                            const idx = skills.indexOf(skill);
-                            const digitalDiceBox = digitalDiceBoxes.eq(idx);
-                            // Use the digital Dice box (encounters page)
-                            digitalDiceBox.off('click').on('click', (e) => {
-                                e.stopPropagation();
-                                this.rollSkillCheck(name)
-                            })
-                            deactivateTooltipListeners(digitalDiceBox);
-                            activateTooltipListeners(digitalDiceBox, "down", beyond20_tooltip, () => this.rollSkillCheck(name));
-                        }
-                    }
-                }
-                if (useDigitalDice || !add_dice)
-                    continue;
-                if (this.type() == "Monster") {
-                    const skill_links = this.isBlockFinder ? 
-                        $(tidbit).find("> a") :
-                        data.find("> a");
-                    for (let a of skill_links.toArray()) {
-                        const mon_skill = a.textContent;
-                        let text = a.nextSibling;
-                        let last = true;
-                        if (text.textContent.trim() === "") {
-                            text = text.nextSibling;
-                        }
-                        if (text.textContent.endsWith(", ")) {
-                            text.textContent = text.textContent.slice(0, -2);
-                            last = false;
-                        }
-                        if (text.nextSibling && text.nextSibling.textContent.trim() === ",") {
-                            text.nextSibling.remove();
-                            last = false;
-                        }
-                        addIconButton(this, () => this.rollSkillCheck(mon_skill), text);
-                        if (!last)
-                            $(a.nextElementSibling).after(", ");
-                    }
-                } else {
-                    data.html("");
-                    // For block finder, we don't have any elements, instead we have text nodes
-                    if (this.isBlockFinder) {
-                        data = data.addBack().each((idx, el) => {
-                            // Remove text nodes
-                            if (el.nodeType === 3) {
-                                el.remove();
-                            }
-                        }).parent();
-                        data.append(" ");
-                    }
-                    let first = true;
-                    for (let skill in this._skills) {
-                        if (!first)
-                            data.append(", ");
-                        first = false;
-                        data.append(skill + " " + this._skills[skill]);
-                        addIconButton(this, () => this.rollSkillCheck(skill), data, { append: true });
-                    }
-                }
-            } else if (label == "Challenge") {
-                this._cr = value.split(" ")[0];
-            }
-            this._tidbits[label] = value;
-        }
         this.lookForActions(stat_block, add_dice, inject_descriptions);
         if (add_dice)
             this.lookForSpells(stat_block);
-        //console.log("Done parsing stat block:", this);
-    }
-
-    displayAvatar() {
-        sendRoll(this, "avatar", this._avatar, { "name": "Avatar" });
     }
 
     rollHitPoints() {
@@ -385,13 +323,13 @@ class Monster extends CharacterBase {
                     "modifier": modifier,
                     "ability-score": score
                 };
-                if (abbr == "STR" && this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character && 
+                if (abbr == "STR" && this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character && 
                     this._parent_character.hasClassFeature("Rage") && this._parent_character.getSetting("barbarian-rage", false)) {
                     roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
                     addEffect(roll_properties, "Rage");
                 }
                 
-                if (this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character &&
+                if (this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character &&
                     this._parent_character.getSetting("custom-ability-modifier", "")) {
                     const custom = parseInt(this._parent_character.getSetting("custom-ability-modifier", "0")) || 0;
                     if (custom != 0)  {
@@ -405,13 +343,12 @@ class Monster extends CharacterBase {
             }
         }
     }
-
+    
     rollInitiative() {
         for (let ability of this._abilities) {
             if (ability[1] == "DEX") {
-                const modifier = ability[3];
+                let initiative = this._initiative;
 
-                let initiative = modifier;
                 if (this.getGlobalSetting("initiative-tiebreaker", false)) {
                     const tiebreaker = ability[2];
 
@@ -436,7 +373,7 @@ class Monster extends CharacterBase {
             "ability": abbr,
             "modifier": mod
         };
-        if (abbr == "STR" && this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character && 
+        if (abbr == "STR" && this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character && 
             this._parent_character.hasClassFeature("Rage") && this._parent_character.getSetting("barbarian-rage", false)) {
             roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
             addEffect(roll_properties, "Rage");
@@ -452,12 +389,16 @@ class Monster extends CharacterBase {
             "ability": ability,
             "modifier": modifier
         };
-        if (ability == "STR" && this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character && 
+        if (ability == "STR" && this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character && 
             this._parent_character.hasClassFeature("Rage") && this._parent_character.getSetting("barbarian-rage", false)) {
             roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
             addEffect(roll_properties, "Rage");
         }
         sendRoll(this, "skill", "1d20" + modifier, roll_properties);
+    }
+
+    displayAvatar() {
+        sendRoll(this, "avatar", this._avatar, { "name": "Avatar" });
     }
 
     parseAttackInfo(description) {
@@ -588,14 +529,8 @@ class Monster extends CharacterBase {
     }
 
     lookForActions(stat_block, add_dice, inject_descriptions) {
-        let blocks;
-        
-        if (this.isBlockFinder) {
-            // In block finders, there are no blocks, it's just straight p body elements
-            blocks = stat_block;
-        } else {
-            blocks = stat_block.find(this._base + "__description-blocks " + this._base + "__description-block");
-        }
+        const headings = stat_block.find("div[class*='styles_descriptions'] > h2[class*='styles_descriptionHeading'], .mon-stat-block-2024__description-block-heading");
+        const descriptions = stat_block.find("div[class*='styles_descriptions'] > div[class*='styles_description'], .mon-stat-block-2024__description-block-content");
 
         this._actions = [];
 
@@ -614,7 +549,7 @@ class Monster extends CharacterBase {
                     const id = addRollButton(this, () => {
                         // Need to recreate roll properties, in case settings (whisper, custom dmg, etc..) have changed since button was added
                         const roll_properties = this.buildAttackRoll(action_name, description);
-                        if (this.type() == "Creature" && this._creatureType === "Wild Shape" && this._parent_character &&
+                        if (this.type() == "Creature" && this._creatureType?.startsWith("Wild Shape") && this._parent_character &&
                             roll_properties["damages"] && roll_properties["damages"].length > 0) {
                             if (this._parent_character.hasClass("Barbarian") && this._parent_character.hasClassFeature("Rage") &&
                                 this._parent_character.getSetting("barbarian-rage", false) && description.match(/Melee(?: Weapon)? Attack:/)) {
@@ -624,6 +559,12 @@ class Monster extends CharacterBase {
                                 roll_properties["damages"].push(String(rage_damage));
                                 roll_properties["damage-types"].push("Rage");
                                 addEffect(roll_properties, "Rage");
+                            }
+
+                            if(this._parent_character.hasClass("Druid") && this._parent_character.hasClassFeature("Improved Lunar Radiance", true) && this._parent_character.getSetting("druid-improved-lunar-radiance", false))
+                            {
+                                roll_properties["damages"].push(String("2d10"));
+                                roll_properties["damage-types"].push("Lunar Radiance");
                             }
                             // Add custom damages to wild shape attacks
                             addCustomDamages(character, roll_properties["damages"], roll_properties["damage-types"]);
@@ -674,12 +615,46 @@ class Monster extends CharacterBase {
         }
 
         let blockFinderPastTidbits = false;
-        for (let block of blocks.toArray()) {
-            const paragraphs = this.isBlockFinder ? 
-                $(block).find("> p.Stat-Block-Styles_Stat-Block-Body, > p.Stat-Block-Styles_Stat-Block-Data") :
-                $(block).find(`${this._base}__description-block-content p`);
+
+        const headingsArray = headings.toArray();
+        const descriptionsArray = descriptions.toArray();
+
+        // Ensure the iteration accounts for mismatched pairs
+        for (let i = 0; i < headingsArray.length; i++) {
+            let heading = headingsArray[i];
+            let description = descriptionsArray[i]; // Attempt to get the paired description
+            
+            // Extract heading text
+            const headingText = $(heading).text().trim();
+            let paragraphs;
+            let outerParagraphs;
+            // Determine the appropriate method to extract paragraphs
+            if (description) {
+                if (!$(description).hasClass('ddbc-html-content')) {
+                    // Case 1: No 'ddbc-html-content' class; check for direct <p> or nested within '.ddbc-html-content > p'
+                    paragraphs = $(description).find('.ddbc-html-content > p').toArray();
+
+                    // Case 1: Look for <p> tags directly inside the description container
+                    outerParagraphs = $(description).children('p').toArray();
+
+                    // Combine both lists into a single array
+                    if (paragraphs.length === 0) {
+                        // Fallback to any <p> directly within the description
+                        paragraphs = $(description).find('p').toArray();
+                    } else if (outerParagraphs.length !== 0) {
+                        paragraphs = [...paragraphs, ...outerParagraphs];
+                    }
+                } else if ($(description).hasClass('ddbc-html-content')) {
+                    // Case 2: Properly nested content with 'ddbc-html-content'
+                    paragraphs = $(description).find('p').toArray();
+                } else {
+                    // Case 3: No specific class, fallback to find any <p>
+                    paragraphs = $(description).find('p').toArray();
+                }                 
+            }
+
             let lastAction = null;
-            for (const p of paragraphs.toArray()) {
+            for (const p of paragraphs) {
                 //console.log("Found action: ", action);
                 const firstChild = p.firstElementChild;
                 if (!firstChild) continue;
@@ -688,17 +663,6 @@ class Monster extends CharacterBase {
                 if (!action_name) continue;
                 // Replace non-breaking space character with regular space so it can match the description
                 action_name = action_name.replace(/ /g, " ");
-                if (this.isBlockFinder && this.type() === "Vehicle") {
-                    // Vehicles in source books will use data blocks just like any of the tidbits
-                    // need to manually filter them out
-                    if (action_name === "Speed") {
-                        blockFinderPastTidbits = true;
-                        continue;
-                    }
-                    if (!blockFinderPastTidbits) continue;
-                    if (action_name.includes("Immunities")) continue;
-                    if (action_name.includes("Resistance")) continue;
-                }
                 const description = descriptionToString(p).trim();
                 if (!description.startsWith(action_name)) continue;
                 if (lastAction) {
@@ -715,58 +679,8 @@ class Monster extends CharacterBase {
                 handleAction(lastAction.name, lastAction.block, action);
             }
         }
-
-        if (this.type() == "Vehicle" || this.type() == "Extra-Vehicle") {
-            // Parse Vehicle (boats) weapons;
-            blocks = stat_block.find(this._base + "__component-block");
-            for (let block of blocks.toArray()) {
-                const action_name = $(block).find(this._base + "__component-block-heading").text().trim();
-                const attributes = $(block).find(this._base + "__component-block-content " + this._base + "__attribute");
-                for (const attribute of attributes.toArray()) {
-                    const label = $(attribute).find(`${this._base}__attribute-label`).text().trim();
-                    const description = $(attribute).find(`${this._base}__attribute-value`).text().trim();
-                    // Skip all attributes and only handle action on the action's desription paragraph with no label
-                    // Some vehicles will also have empty attributes with no label and no value
-                    if (label || !description)
-                        continue;
-                    handleAction(action_name, block, attribute);
-                }
-            }
-
-            // Parse Vehicle (boats) weapons (in character extra);
-            blocks = stat_block.find(this._base + "-component");
-            for (let block of blocks.toArray()) {
-                const action_name = $(block).find(this._base + "__section-header").text();
-                const actions = $(block).find(this._base + "-component__actions");
-                // We can't parse each action separately because the entire block is interactive.;
-                handleAction(action_name, block, actions);
-            }
-
-            // Parse Vehicle (infernal machines) features;
-            blocks = stat_block.find(this._base + "__feature," + this._base + "__features-feature");
-            for (let block of blocks.toArray()) {
-                let action_name = $(block).find(this._base + "__feature-label").text();
-                let action = $(block).find(this._base + "__feature-value");
-                if (action_name == "" && action.length == 0) {
-                    action_name = $(block).find(this._base + "__features-feature-name").text();
-                    action = $(block).find(this._base + "__features-feature-description");
-                }
-                handleAction(action_name, block, action);
-            }
-
-            // Parse Vehicle (infernal machines) action stations;
-            blocks = stat_block.find(this._base + "__action-station-block," + this._base + "-action-station");
-            for (let block of blocks.toArray()) {
-                let action_name = $(block).find(this._base + "__action-station-block-heading").text();
-                let action = $(block).find(this._base + "__action-station-block-content " + this._base + "__attribute-value");
-                if (action_name == "" && action.length == 0) {
-                    action_name = $(block).find(this._base + "-action-station__heading").text();
-                    action = $(block).find(this._base + "__action");
-                }
-                handleAction(action_name, block, action);
-            }
-        }
     }
+
     _injectDiceReplacement(node, formula, dice, modifier, name, defaultReplacement) {
         // Check if the formula is inside a digital dice button, if yes, don't replace anything
         const originalFormula = dice + modifier;
@@ -816,9 +730,7 @@ class Monster extends CharacterBase {
     }
 
     lookForSpells(stat_block) {
-        const spells = this.isBlockFinder ? 
-            stat_block.find(".Stat-Block-Styles_Stat-Block-Body a.spell-tooltip") :
-            stat_block.find(this._base + "__description-blocks a.spell-tooltip");
+        const spells = stat_block.find("div[class*='styles_descriptions'] > div[class*='styles_description'], .mon-stat-block-2024__description-block > .mon-stat-block-2024__description-block-content").find("a.spell-tooltip");
         for (let spell of spells.toArray()) {
             const tooltip_href = $(spell).attr("data-tooltip-href");
             const tooltip_url = tooltip_href.replace(/-tooltip.*$/, "/tooltip");
@@ -829,7 +741,7 @@ class Monster extends CharacterBase {
     updateInfo() {
         if (this.type() != "Creature" && this.type() != "Extra-Vehicle") return;
         // Creature name could change/be between.includes(customized) calls;
-        this._name = this._stat_block.find(this._base + "__name").text().trim();
+        this._name = this._stat_block.find("section[class*='styles_creatureBlock'] > h1[class*='styles_header']").text().trim();
         let hp = null;
         let max_hp = null;
         let temp_hp = null;
@@ -861,7 +773,7 @@ class Monster extends CharacterBase {
 
     getDict() {
         let settings = undefined;
-        if (this.type() == "Creature" && this._parent_character && this._creatureType === "Wild Shape") {
+        if (this.type() == "Creature" && this._parent_character && this._creatureType?.startsWith("Wild Shape")) {
             const parentDict = this._parent_character.getDict();
             settings = parentDict.settings;
         }

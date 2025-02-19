@@ -36,10 +36,17 @@ class Beyond20 {
                     user: game.user.id
                 }
             },
-            permission: {
+        };
+        // In v10, permission field was changed into ownership
+        if (isNewerVersion(game.version || game.data.version, "10")) {
+            baseAttributes["ownership"] = {
+                [game.userId]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+            }
+        } else {
+            baseAttributes["permission"] = {
                 [game.userId]: CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
             }
-        };
+        }
         if (!["Character", "Monster", "Creature"].includes(request.character.type)) {
             return {...baseAttributes, img: "icons/svg/mystery-man.svg", system: actorData, items: []}
         }
@@ -719,7 +726,7 @@ class Beyond20 {
             const button = $(`<button title="${data.label}" style="background-color: ${data.color};"><i class="fas fa-${data.icon}"></i></button>`);
             button.on('click', async () => {
                 for (const token of canvas.tokens.controlled) {
-                    await token.actor?.applyDamage(damage, data.multiplier);
+                    await token.actor?.applyDamage(damage, { multiplier: data.multiplier });
                 };
             })
             buttonContainer.append(button);
@@ -740,7 +747,7 @@ class Beyond20CreateNativeActorsApplication extends FormApplication {
         for (const user of game.users.contents) {
             const actor = game.actors.find(a => a.getFlag("beyond20", "user") === user.id);
             if (!actor) {
-                await Actor.create({
+                const actorData = {
                     name: user.name,
                     type: "character",
                     img: "modules/beyond20/images/icons/icon256.png",
@@ -749,11 +756,19 @@ class Beyond20CreateNativeActorsApplication extends FormApplication {
                         beyond20: {
                             user: user.id
                         }
-                    },
-                    permission: {
+                    }
+                }
+                // In v10, permission field was changed into ownership
+                if (isNewerVersion(game.version || game.data.version, "10")) {
+                    actorData["ownership"] = {
+                        [user.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+                    }
+                } else {
+                    actorData["permission"] = {
                         [user.id]: CONST.DOCUMENT_PERMISSION_LEVELS.OWNER
                     }
-                });
+                }
+                await Actor.create(actorData);
                 ui.notifications.info(`Created Beyond20 Actor for user ${user.name}`);
             }
         }

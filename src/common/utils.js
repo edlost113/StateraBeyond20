@@ -108,6 +108,10 @@ function roll20Title(title) {
     return title.replace(" | Roll20", "");
 }
 
+function isRoll20(title) {
+    return title.includes("| Roll20");
+}
+
 function isFVTT(title) {
     return title.includes("Foundry Virtual Tabletop");
 }
@@ -275,4 +279,56 @@ function initializeAlertify() {
     if (alertify.Beyond20Roll === undefined)
         alertify.dialog('Beyond20Roll', function () { return {}; }, false, "alert");
     
+}
+
+const bouncedFallbackRenders = {};
+function simpleHash(input) {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+        const char = input.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; // Convert to 32-bit integer
+    }
+    return hash;
+}
+
+function forwardMessageToDOM(request) {
+    if (request.action == "hp-update") {
+        sendCustomEvent("UpdateHP", [request, request.character.name, request.character.hp, request.character["max-hp"], request.character["temp-hp"]]);
+    } else if (request.action === "update-combat") {
+        sendCustomEvent("UpdateCombat", [request, request.combat, settings]);
+    } else if (request.action == "conditions-update") {
+        sendCustomEvent("UpdateConditions", [request, request.character.name, request.character.conditions, request.character.exhaustion]);
+    } else if (request.action == "roll") {
+        // Let's run it through the roll renderer and let the site decide to use
+        // the original request or the rendered version
+        // Requires roll_renderer to be set (currently in generic-site and ddb pages)
+        roll_renderer.handleRollRequest(request);
+    } else if (request.action == "rendered-roll") {
+        // Hash the original request to be able to match it with the rendered one in case of fallback
+        // But don't use the whole request since it can change by the time we render it (original-whisper is added)
+        const reqHash = simpleHash(JSON.stringify({
+            action: request.request.action,
+            type: request.request.type,
+            character: request.request.character,
+            roll: request.request.roll,
+            name: request.request.name,
+            ability: request.request.ability,
+            modifier: request.request.modifier,
+            description: request.request.description
+        }));
+        if (request.rendered === "fallback") {
+            // This is a fallback render, if we're sending it from DDB, we might end up with
+            // a double render, so bounce this one for 500ms to let the real render happen if it's
+            // going to, then override the fallback render if we do.
+            bouncedFallbackRenders[reqHash] = setTimeout(() => {
+                delete bouncedFallbackRenders[reqHash];
+                sendCustomEvent("RenderedRoll", [request]);
+            }, 500);
+        } else {
+            clearTimeout(bouncedFallbackRenders[reqHash]);
+            delete bouncedFallbackRenders[reqHash];
+            sendCustomEvent("RenderedRoll", [request]);
+        }
+    } 
 }

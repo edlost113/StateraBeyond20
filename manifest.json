@@ -16,6 +16,7 @@
 		"*://*.forge-vtt.com/game"
 	],
     "optional_host_permissions": ["*://*/*"],
+	"optional_permissions": ["webNavigation"],
 	"icons": {
 		"16": "images/icons/icon16.png",
 		"24": "images/icons/icon24.png",
@@ -32,9 +33,9 @@
 	"action": {
 		"default_popup": "default_popup.html",
         "default_icon": {
-          "16": "images/icons/icon16.png",
-          "24": "images/icons/icon24.png",
-          "32": "images/icons/icon32.png"
+			"16": "images/icons/icon16.png",
+			"24": "images/icons/icon24.png",
+			"32": "images/icons/icon32.png"
         }
 	},
 	"web_accessible_resources": [{
@@ -157,11 +158,15 @@
 			"matches": [
 				"*://*.dndbeyond.com/sources/*",
 				"*://*.dndbeyond.com/classes/*",
-				"*://*.dndbeyond.com/races/*"
+				"*://*.dndbeyond.com/races/*",
+				"*://*.dndbeyond.com/species/*",
+				"*://*.dndbeyond.com/backgrounds/*"
 			],
             "exclude_matches": [
 				"*://*.dndbeyond.com/classes/*/edit",
-				"*://*.dndbeyond.com/races/*/edit"
+				"*://*.dndbeyond.com/races/*/edit",
+				"*://*.dndbeyond.com/species/*/edit",
+				"*://*.dndbeyond.com/backgrounds/*/edit"
             ],
 			"css": [
 				"dist/beyond20.css"

@@ -130,9 +130,43 @@ async function queryDamageTypeFromArray(name, damages, damage_types, possible_ty
     return choice;
 }
 
+async function queryCunningStrike() {
+    const selection = [];
+    // Sneak Attack free-rules, pg. 129
+    // Cunning Strike free-rules, pg. 130
+    const actions = [{ action: "None" }];
+    const hasImprovedCunningStrike = character.hasClassFeature("Improved Cunning Strike");
+    
+    actions.push(...character.getSneakAttackActions());
+    
+    const options = [...actions.map(m => m["die"] ? `${m.action}: ${m.die}D6` : `${m.action}`)];
+
+    const getSelection = choices => {
+        return choices.map(m => {
+            if (!m || m === "None") return {action: "None"};
+            const option = m.split(":")[0];
+            return actions.find(f => f.action === option);
+        });
+    }
+        
+    if(hasImprovedCunningStrike) {
+        const choice = await dndbeyondDiceRoller.queryDoubleGeneric("Sneak Attack: Cunning Strike", "Cunning Strike effect", options, "Improved Cunning Strike effect", options, "sneak-attack", options, options, "None", "None");
+        if (choice) {
+            selection.push(...getSelection(choice));
+        }
+    } else {
+        const choice = [await dndbeyondDiceRoller.queryGeneric("Sneak Attack: Cunning Strike", "Cunning Strike effect", options, "sneak-attack", options, "None")];
+        if(choice) {
+            selection.push(...getSelection(choice));
+        }
+    }
+    
+    return selection;
+}
+
 async function buildAttackRoll(character, attack_source, name, description, properties,
                          damages = [], damage_types = [], to_hit = null,
-                         brutal = 0, force_to_hit_only = false, force_damages_only = false, {weapon_damage_length=0}={}) {
+                         brutal = 0, force_to_hit_only = false, force_damages_only = false, {weapon_damage_length=0}={}, settings_to_change = []) {
     const roll_properties = {
         "name": name,
         "attack-source": attack_source,
@@ -183,6 +217,12 @@ async function buildAttackRoll(character, attack_source, name, description, prop
         if (roll_properties.name === "Chromatic Orb") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Thunder"]);
             if (choice === null) return null; // Query was cancelled;
+        } else if (roll_properties.name === "Sorcerous Burst") {
+            // HACK ALERT: temporarily use acid damage....
+            damages = damages.map(m => damages[0]); // set everything to the correct acid dmg
+            roll_properties["damages"] = damages; // reset roll_properties
+            const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Psychic", "Thunder"]);
+            if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Dragon's Breath") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison"]);
             if (choice === null) return null; // Query was cancelled;
@@ -230,7 +270,38 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Radiant", "Necrotic"]);
             if (choice === null) return null; // Query was cancelled;
         }
-        
+
+        // TODO: refactor into a method and remove it from build attack roll 
+        if (character.hasClass("Rogue") && character.hasClassFeature("Sneak Attack 2024") && 
+            character.getSetting("rogue-sneak-attack", false) && 
+            !name.includes("Psionic Power: Psychic Whispers") && 
+            (properties["Attack Type"] == "Ranged" ||
+            (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
+            name.includes("Psychic Blade") ||
+            name.includes("Shadow Blade") ||
+            name.includes("Sneak Attack"))) {
+            let sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
+            // Rogue: Sneak Attack
+            if (character.hasClassFeature("Cunning Strike") && character.getSetting("rogue-cunning-strike", false)) {
+                const choices = await queryCunningStrike();
+                const validChoices = [];
+                for (const choice of choices) {
+                    if (choice.action === "None") continue;
+                    if (choice["die"] > sneakDieCount) continue;
+                    sneakDieCount -= choice["die"];
+                    validChoices.push(choice);
+                }
+                roll_properties["cunning-strike-effects"] = validChoices.map(m => m.action).join(", ") || undefined;
+                settings_to_change["rogue-cunning-strike"] = false;
+            }
+            const sneak_attack = sneakDieCount > 0 ? `${sneakDieCount}d6` : "0";
+            if (name.includes("Sneak Attack")) {
+                damages[0] = sneak_attack;
+            } else {
+                damages.push(sneak_attack);
+                damage_types.push("Sneak Attack");
+            }
+        }
         const crits = damagesToCrits(character, damages, damage_types);
         const crit_damages = [];
         const crit_damage_types = [];
@@ -239,7 +310,7 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                 crit_damages.push(dmg);
                 crit_damage_types.push(damage_types[i]);
             }
-        }
+        }      
         if (to_hit) {
             if (character.hasFeat("Piercer")) {
                 for (let i = 0; i < damage_types.length; i++) {
@@ -275,7 +346,8 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                     crit_damage_types.push("Vicious (20 On The Attack Roll)");
                 } 
             }
-                       
+
+            // applies to only 2014 brutal critical 2024 has replaced this with brutal strike
             if (brutal > 0) {
                 const rule = parseInt(character.getGlobalSetting("critical-homebrew", CriticalRules.PHB));
                 let highest_dice = 0;
@@ -302,9 +374,21 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                     }
                     crit_damage_types.push(isBrutal && isSavage ? "Savage Attacks & Brutal" : (isBrutal ? "Brutal" : "Savage Attacks"));
                 }
-
             }
         }
+        // effects
+        if(properties["Attack Type"] == "Melee" || properties["Attack Type"] == "Unarmed Strike" || name.includes("Shadow Blade")) {
+            if(character.getSetting("effects-enlarge", false)) {
+                damages.push("+1d4");
+                damage_types.push("Enlarge");
+                addEffect(roll_properties, "Enlarge");
+            } else if(character.getSetting("effects-reduce", false)) {
+                damages.push("-1d4");
+                damage_types.push("Reduce");
+                addEffect(roll_properties, "Reduce");
+            }
+        }
+
         roll_properties["critical-damages"] = crit_damages;
         roll_properties["critical-damage-types"] = crit_damage_types;
         
@@ -413,6 +497,28 @@ async function sendRoll(character, rollType, fallback, args) {
             const operator = ["+", "-"].includes(modifier[0]) ? "" : "+"
             req.character.settings["custom-roll-dice"] = (req.character.settings["custom-roll-dice"] || "") + ` ${operator}${modifier}`;
         }
+
+        if (req.character.settings["effects-bless"] && (["attack", "spell-attack"].includes(req.type) && req["to-hit"] || req.type === "saving-throw")) {
+            req.character.settings["custom-roll-dice"] = (req.character.settings["custom-roll-dice"] || "") + " +1d4";
+            addEffect(req, "Bless");
+        } else if (req.character.settings["effects-bane"] && (["attack", "spell-attack"].includes(req.type) && req["to-hit"] || req.type === "saving-throw")) {
+            req.character.settings["custom-roll-dice"] = (req.character.settings["custom-roll-dice"] || "") + " -1d4";
+            addEffect(req, "Bane");
+        }
+
+        if (req.character.exhaustion && req.character.exhaustion != 0 && req.character.settings["effects-exhaustion-2024"] && 
+            (["attack", "spell-attack"].includes(req.type) && req["to-hit"] || 
+            ["initiative", "ability", "saving-throw", "skill", "death-save"].includes(req.type))) {
+            req.character.settings["custom-roll-dice"] = (req.character.settings["custom-roll-dice"] || "") + ` -${req.character.exhaustion * 2}`;
+            addEffect(req, `Exhaustion (${req.character.exhaustion})`);
+        } else if (req.character.exhaustion && req.character.exhaustion != 0 && req.character.settings["effects-exhaustion-2014"]) {
+            if((["attack", "spell-attack"].includes(req.type) && req["to-hit"] || ["saving-throw"].includes(req.type)) && req.character.exhaustion && req.character.exhaustion >= 3) {
+                adjustRollAndKeyModifiersWithDisadvantage(req);
+            } else if (["initiative", "ability", "skill", "death-save"].includes(req.type) && req.character.exhaustion && req.character.exhaustion >= 1) {
+                adjustRollAndKeyModifiersWithDisadvantage(req);
+            }
+            addEffect(req, `Exhaustion (${req.character.exhaustion})`);
+        }
     }
     
     if (req.type === "initiative") {
@@ -438,6 +544,16 @@ async function sendRoll(character, rollType, fallback, args) {
         }
     }
 
+    if(req.character.settings){
+        // effects 
+        if(["saving-throw", "ability", "skill"].includes(rollType) && req.ability == "STR" && req.character.settings["effects-enlarge"]) {
+            adjustRollAndKeyModifiersWithAdvantage(req);
+            addEffect(req, "Enlarge");
+        } else if(["saving-throw", "ability", "skill"].includes(rollType) && req.ability == "STR" && req.character.settings["effects-reduce"]) {
+            adjustRollAndKeyModifiersWithDisadvantage(req);
+            addEffect(req, "Reduce");
+        }
+    }
 
     if (character.getGlobalSetting("use-digital-dice", false) && DigitalDiceManager.isEnabled()) {
         req.sendMessage = true;
@@ -449,8 +565,41 @@ async function sendRoll(character, rollType, fallback, args) {
     }
 }
 
+function adjustRollAndKeyModifiersWithAdvantage(roll_properties) {
+    // Adjust roll_properties["advantage"]
+    const advantageMapping = {
+        [RollType.NORMAL]: RollType.ADVANTAGE,
+        [RollType.DISADVANTAGE]: RollType.NORMAL,
+        [RollType.OVERRIDE_DISADVANTAGE]: RollType.NORMAL,
+        [RollType.SUPER_DISADVANTAGE]: RollType.DISADVANTAGE
+    };
+
+    if (roll_properties["advantage"] === undefined) {
+        roll_properties["advantage"] = RollType.ADVANTAGE;
+    } else if (roll_properties["advantage"] in advantageMapping) {
+        roll_properties["advantage"] = advantageMapping[roll_properties["advantage"]];
+    }
+}
+
+function adjustRollAndKeyModifiersWithDisadvantage(roll_properties) {
+    // Adjust roll_properties["advantage"]
+    const disadvantageMapping = {
+        [RollType.NORMAL]: RollType.DISADVANTAGE,
+        [RollType.ADVANTAGE]: RollType.NORMAL,
+        [RollType.OVERRIDE_ADVANTAGE]: RollType.NORMAL,
+        [RollType.SUPER_ADVANTAGE]: RollType.ADVANTAGE
+    };
+
+    if (roll_properties["advantage"] === undefined) {
+        roll_properties["advantage"] = RollType.DISADVANTAGE;
+    } else if (roll_properties["advantage"] in disadvantageMapping) {
+        roll_properties["advantage"] = disadvantageMapping[roll_properties["advantage"]];
+    }
+}
+
 function sendRollRequestToDOM(request) {
     sendCustomEvent(request.action, [request]);
+    forwardMessageToDOM(request);
 }
 
 function isRollButtonAdded(where) {
@@ -573,7 +722,7 @@ function addDisplayButton(callback, where, { text = "Display in VTT", append = t
         "margin-right": "auto"
     });
     $(".ct-beyond20-roll-display").css("margin-top", "2px");
-    $(".ct-beyond20-roll-display").on('click', (event) => callback());
+    $(button).on('click', (event) => callback(event));
     return button;
 }
 
@@ -595,12 +744,12 @@ function addHitDieButtons(rollCallback) {
     }
 }
 
-function addIconButton(character, callback, where, { append = false, prepend = false, custom = false } = {}) {
+function addIconButton(character, callback, where, { append = false, prepend = false, custom = false, margins = false } = {}) {
     const rolltype_class = getRollTypeButtonClass(character);
     const icon = custom ? chrome.runtime.getURL("images/icons/badges/custom20.png") :
                         getBadgeIconFromClass(rolltype_class);
     const id = "beyond20-roll-" + (custom ? "custom-" : "") + Math.random().toString().slice(2);
-    const button = E.span({ class: "ct-beyond20-" + (custom ? "custom-roll-button" : "roll"), id, style: "margin-right:3px; margin-left: 3px;" },
+    const button = E.span({ class: "ct-beyond20-" + (custom ? "custom-roll-button" : "roll"), id, style: margins ? "margin-right:3px; margin-left: 3px;" : "" },
         E.img({ class: "ct-beyond20-" + (custom ? "custom-icon" : "icon"), src: icon })
     );
 
@@ -670,6 +819,10 @@ function recursiveDiceReplace(node, cb) {
             // don't replace anything inside of a roll button itself
             if ($(child).hasClass("ct-beyond20-roll") || $(child).hasClass("ct-beyond20-custom-roll"))
                 continue;
+            
+            // Skip anything inside user comments
+            if ($(child).hasClass("homebrew-comments"))
+                continue;
             // don't replace anything inside of an embedded script or style tag
             if (["STYLE", "SCRIPT"].includes(node.nodeName))
                 continue
@@ -682,10 +835,28 @@ function recursiveDiceReplace(node, cb) {
             // Try to catch the use case where part of the roll has a tooltip and is therefore a different node
             // <strong><span tooltip>2</span>d4</strong>
             const parent = $(node).parent();
-            const parentText = parent.text();
+            let parentText = parent.text();
             // The parent has another portion of the same dice formula, so we need to replace the whole parent
             // with the replaced dice
-            if (parentText !== node.textContent && replaceRolls(parentText, () => "-") === "-") {
+            let parentReplaced = replaceRolls(parentText, () => "-");
+            // Steel Defender has <strong>2d8+</strong><span>2</span> so we try to see if the
+            // text ends in "+" so we can get the modifier from the sibling node
+            if (parentReplaced === "-+") { 
+                const sibling = parent.next();
+                const siblingText = sibling.text();
+                // Check that the entire sibling content is a number, so we can add it to the original text
+                // and delete the sibling node
+                if (siblingText && parseInt(siblingText) == siblingText) {
+                    parentText += parseInt(siblingText);
+                    parentReplaced = replaceRolls(parentText, () => "-");
+                    sibling.remove();
+                }
+            }
+            if (parentText !== node.textContent &&
+                (parentReplaced === "-" ||
+                 parentReplaced === "--" ||
+                 parentReplaced === "+-" // Emanate Wrath has "+2d6" which gets "2d6" parsed and leaves "+-"
+                )) {
                 const text = replaceRolls(parentText, (...args) => cb(node, ...args));
                 parent.html($.parseHTML(text));
             } else {
@@ -700,6 +871,8 @@ function injectDiceToRolls(selector, character, name = "", replacementFn = null)
     const tables = $(selector).find("table");
     for (let table of tables.toArray()) {
         table = $(table);
+        // Skip any table found inside user comments
+        if (table.closest(".homebrew-comments").length > 0) continue;
         if (isRollButtonAdded(table)) continue;
         const tableName = name instanceof Function ? name(table) : name;
         const roll_table = RollTable.parseTable(table, tableName, {character});

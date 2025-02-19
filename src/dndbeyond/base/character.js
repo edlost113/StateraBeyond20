@@ -26,6 +26,7 @@ class Character extends CharacterBase {
         this._to_hit_cache = {}
         this._conditions = [];
         this._exhaustion = 0;
+        this._version = 2014;
     }
 
     updateInfo() {
@@ -90,10 +91,10 @@ class Character extends CharacterBase {
             }
         }
         if (Object.keys(this._to_hit_cache).length == 0) {
-            const items = $(".ct-combat-attack--item .ct-item-name,.ddbc-combat-attack--item .ddbc-item-name");
+            const items = $(".ct-combat-attack--item .ct-item-name,.ddbc-combat-attack--item .ddbc-item-name,.ddbc-combat-attack--item span[class*='styles_itemName']");
             for (let item of items.toArray()) {
                 const item_name = item.textContent;
-                const to_hit = findToHit(item_name, ".ct-combat-attack--item,.ddbc-combat-attack--item", ".ct-item-name,.ddbc-item-name", ".ct-combat-attack__tohit,.ddbc-combat-attack__tohit");
+                const to_hit = findToHit(item_name, ".ct-combat-attack--item,.ddbc-combat-attack--item", ".ct-item-name,.ddbc-item-name,span[class*='styles_itemName']", ".ct-combat-attack__tohit,.ddbc-combat-attack__tohit");
                 //console.log("Caching to hit for ", item_name, " : ", to_hit);
                 this._to_hit_cache[item_name] = to_hit;
             }
@@ -123,7 +124,7 @@ class Character extends CharacterBase {
             let modifier = $(ability).find(".ct-ability-summary__primary .ct-signed-number,.ddbc-ability-summary__primary .ddbc-signed-number,.ddbc-ability-summary__primary span[class*='styles_numberDisplay']").text();
             let value = $(ability).find(".ct-ability-summary__secondary,.ddbc-ability-summary__secondary").text();
             if (modifier == "") {
-                modifier = $(ability).find(".ct-ability-summary__secondary .ct-signed-number,.ddbc-ability-summary__secondary .ddbc-signed-number, .ct-ability-summary__secondary span[class*='styles_numberDisplay']").text();
+                modifier = $(ability).find(".ct-ability-summary__secondary .ct-signed-number,.ddbc-ability-summary__secondary .ddbc-signed-number,.ddbc-ability-summary__secondary span[class*='styles_numberDisplay'], .ct-ability-summary__secondary span[class*='styles_numberDisplay']").text();  
                 value = $(ability).find(".ct-ability-summary__primary,.ddbc-ability-summary__primary").text();
             }
             this._abilities.push([name, abbr, value, modifier]);
@@ -135,35 +136,63 @@ class Character extends CharacterBase {
     }
 
     updateHP() {
-        const health_pane = $(".ct-health-manager");
-        let hp = null;
-        let max_hp = null;
-        let temp_hp = null;
-        if (health_pane.length > 0) {
-            hp = parseInt(health_pane.find(".ct-health-manager__health-item--cur .ct-health-manager__health-item-value").text());
-            max_hp = parseInt(health_pane.find(".ct-health-manager__health-item--max .ct-health-manager__health-item-value .ct-health-manager__health-max-current").text());
-            temp_hp = parseInt(health_pane.find(".ct-health-manager__health-item--temp .ct-health-manager__health-item-value input").val());
-        } else {
-            const hp_items = $(".ct-health-summary__hp-group--primary .ct-health-summary__hp-item");
-            for (let item of hp_items.toArray()) {
-                const label = $(item).find(".ct-health-summary__hp-item-label").text().trim();
-                if (label == "Current") {
-                    // Make sure it's !an input being modified;
-                    const number = $(item).find(".ct-health-summary__hp-item-content .ct-health-summary__hp-number");
-                    if (number.length > 0)
-                        hp = parseInt(number.text());
-                } else if (label == "Max") {
-                    max_hp = parseInt($(item).find(".ct-health-summary__hp-item-content .ct-health-summary__hp-number").text());
+        const getHpValues = (container, selectors) => {
+            let hp = null, max_hp = null;
+            for (let item of container.find(selectors.item).toArray()) {
+                const label = $(item).find(selectors.label).text().trim();
+                if (label === "Current") {
+                    const number = $(item).find(selectors.current);
+                    if (number.length > 0) hp = parseInt(number.val() || number.text());
+                } else if (label === "Max") {
+                    max_hp = parseInt($(item).find(selectors.max).text());
                 }
             }
-            const temp_item = $(".ct-health-summary__hp-group--temp .ct-health-summary__hp-item--temp .ct-health-summary__hp-item-content");
-            if (temp_item.length > 0) {
-                // Can be hp-empty class instead;
-                temp_hp = parseInt(temp_item.find(".ct-health-summary__hp-number").text()) || 0;
-            } else {
+            return { hp, max_hp };
+        };
+        
+        const getTempHp = (container, selectors) => {
+            const tempItem = container.find(selectors.temp);
+            return tempItem.length > 0 ? parseInt(tempItem.find(selectors.tempValue).val() || tempItem.find(selectors.tempValue).text()) || 0 : null;
+        };
+        const selectors = {
+            pane: {
+                group: ".b20-health-manage-pane",
+                item: "div[class*='styles_container'] div[class*='styles_innerContainer'] div[class*='styles_item']",
+                label: "label[class*='styles_label'], span[class*='styles_label']",
+                current: "input[class*='styles_input']",
+                max: "div[class*='styles_maxContainer']",
+                temp: "div[class*='styles_container'] div[class*='styles_temp']",
+                tempValue: "input[class*='styles_input']"
+            },
+            quickAccess: {
+                group: ".ct-health-summary__hp-group--primary, .ct-quick-info__health",
+                item: ".ct-health-summary__hp-item, div[class*='styles_container'] div[class*='styles_innerContainer'] div[class*='styles_item']",
+                label: "label[class*='styles_label'], span[class*='styles_label']",
+                current: "button[class*='styles_valueButton']",
+                max: "div[class*='styles_number']",
+                temp: ".ct-health-summary__hp-group--temp .ct-health-summary__hp-item--temp .ct-health-summary__hp-item-content, div[class*='styles_temp']",
+                tempValue: ".ct-health-summary__hp-number, button[class*='styles_valueButton'], input[class*='styles_input']"
+            }
+        };
+        
+        const healthPane = $(selectors.pane.group);
+        const quickAccessPane = $(selectors.quickAccess.group);
+        
+        let hp = 0, max_hp = 0, temp_hp = 0;
+        if (healthPane.length > 0 || quickAccessPane.length > 0) {
+            ({ hp, max_hp } = getHpValues(healthPane, selectors.pane));
+            if (hp === null || max_hp === null) {
+                ({ hp, max_hp } = getHpValues(quickAccessPane, selectors.quickAccess));
+            }
+           
+            temp_hp = getTempHp(healthPane, selectors.pane);
+            if (temp_hp === null) {
+                temp_hp = getTempHp(quickAccessPane, selectors.quickAccess);
+            }
+            if (temp_hp === null) {
                 temp_hp = this._temp_hp;
             }
-
+        } else {
             const mobile_hp = $(".ct-status-summary-mobile__hp-current");
             if (mobile_hp.length > 0) {
                 hp = parseInt(mobile_hp.text());
@@ -175,14 +204,17 @@ class Character extends CharacterBase {
                     temp_hp = 0;
                 hp = hp - temp_hp;
             }
-            if ($(".ct-status-summary-mobile__deathsaves-group").length > 0 ||
-                $(".ct-health-summary__deathsaves").length > 0) {
-                // if (we find death saving section, then it means the HP is 0;
-                hp = 0;
-                temp_hp = 0;
-                max_hp = this._max_hp;
-            }
         }
+        if ($(`.ct-status-summary-mobile__deathsaves-group, 
+            .ct-quick-info__health div[class*='styles_deathSaves'], 
+            .b20-health-manage-pane div[class*='styles_deathSavesGroups'],
+            .ct-health-summary__deathsaves`).length > 0) {
+            // if we find death saving section, then it means the HP is 0
+            hp = 0;
+            temp_hp = 0;
+            max_hp = this._max_hp;
+        }
+        
         if (hp !== null && max_hp !== null && (this._hp != hp || this._max_hp != max_hp || this._temp_hp != temp_hp)) {
             this._hp = hp;
             this._max_hp = max_hp;
@@ -223,7 +255,9 @@ class Character extends CharacterBase {
     }
 
     featureDetailsToList(selector) {
+
         const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading'], .ddbc-attunement-slot--filled > .ddbc-attunement-slot__content > .ddbc-attunement-slot__name > span[class*='styles_itemName']")
+
         const feature_list = [];
         for (let feat of features.toArray()) {
             const feat_reference = $(feat).parent().find("span[class*='styles_metaItem'] > p[class*='styles_reference'] > span[class*='styles_name']").eq(0).text();
@@ -279,30 +313,33 @@ class Character extends CharacterBase {
         }
     }
 
-    /*featureDetailsToList(selector, name) {
-        const feature_list = [];
-
-        if(name === "items") {
-            const features = $(selector).find(".ddbc-attunement-slot--filled > .ddbc-attunement-slot__content > .ddbc-attunement-slot__name > span[class*='styles_itemName']");
-            for (let feat of features.toArray()) {
-                const feat_name = feat.childNodes[0].textContent.trim();
-                feature_list.push(feat_name);
-            }
-        } else {
-            const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading']");
-            for (let feat of features.toArray()) {
-                const feat_name = feat.childNodes[0].textContent.trim();
-                feature_list.push(feat_name);
-                const options = $(feat).parent().find(".ct-feature-snippet__option > .ct-feature-snippet__heading");
-                for (let option of options.toArray()) {
-                    const option_name = option.childNodes[0].textContent.trim();
-                    feature_list.push(feat_name + ": " + option_name);
-                }
-            }
+    getFeatureVersionName(feat_name, feat_reference) {
+        if (!feat_reference) return feat_name;
+        let is2024 = false;
+        if((feat_name.toLowerCase() === "great weapon master" ||
+            feat_name.toLowerCase() === "sharpshooter" ||
+            feat_name.toLowerCase() === "dread ambusher" ||
+            feat_name.toLowerCase() === "stalker’s flurry" ||            
+            feat_name.toLowerCase() === "charger" ||
+            feat_name.toLowerCase() === "tavern brawler" ||
+            feat_name.toLowerCase() === "polearm master") && 
+            feat_reference.toLowerCase().includes("2024")) {
+                is2024 = true;
+        } else if ((feat_name.toLowerCase() === "fighting style" ||
+            feat_name.toLowerCase() === "additional fighting style" ||
+            feat_name.toLowerCase() === "great weapon fighting" ||
+            feat_name.toLowerCase() === "sneak attack") &&
+            feat_reference.toLowerCase().includes("free-rules")) {
+                is2024 = true;
         }
-        //console.log(name, feature_list);
-        return feature_list;
-    }*/
+
+        if (is2024) {
+            // just using something set by us so if it changes in the future we dont care
+            return `${feat_name} 2024`;
+        } else {
+            return feat_name;
+        }
+    }
 
     updateFeatures() {
         let update = false;
@@ -321,6 +358,14 @@ class Character extends CharacterBase {
         } else {
             this._class_features = this.getSetting("class-features", []);
         }
+
+        const regex2024 = /Core (?:.*?).Traits/; // all 2024 classes (not homebrew) have core traits
+        const traits = this._class_features.some(s => {
+            const match = s.match(regex2024);
+            return match && match.length !== 0
+        }); // 2024 class with 2014 classes multiclassed will be treated as 2024 classes
+        this._version = traits ? 2024 : 2014;
+
 
         const race_detail = $(".ct-features .ct-content-group:has(.ct-feature-snippet--racial-trait)");
         if (race_detail.length > 0) {
@@ -462,6 +507,32 @@ class Character extends CharacterBase {
         if (substring) return this._actions.some(f => f.includes(name));
         else return this._actions.includes(name);
     }
+
+    getClassFeatureChoices(name) {
+        return this._class_features.filter(f => f.startsWith(`${name}:`)).map(m => m.replace(`${name}: `, ""))
+    }
+
+    getSneakAttackActions() {
+        // Define the regex only once
+        const regex = /(?:Sneak Attack: )(.*?) \(Cost: (\d+)[dD]\d+\)/;
+    
+        // Filter and transform logic
+        const transform = (features) =>
+            features.map(f => {
+                const match = f.match(regex);
+                return match && match.length === 3 ? { action: match[1].trim(), die: parseInt(match[2]) } : null;
+            }).filter(Boolean); // Remove null entries
+    
+        // Combine all filtered and transformed arrays
+        const actions = [
+            ...transform(this._class_features),
+            ...transform(this._racial_traits),
+            ...transform(this._feats)
+        ];
+    
+        return actions;
+    }
+
     /**
      * Blood Hunter was renamed to "Blood Hunter (archived)"
      * Try to find the blood h
@@ -471,6 +542,30 @@ class Character extends CharacterBase {
         const new_name = Object.keys(this._classes).find(c => c.includes("Blood Hunter"));
         if (new_name) return new_name;
         return "Blood Hunter (archived)";
+    }
+    /**
+     * Checks if the character has Great Weapon Fighting, which can be a Feat, or a Fighting Style
+     * or an "Additional Fighting Style" (Champion Fighter at level 7) and can be the 2014 or 2024 variant
+     * @param {Number} version - Accepts only undefined, 2014 and 2024 as values. If set to 2024, checks
+     *                           for the 2024 variant of the feature, if set to 2014 checks for 2014 variant
+     *                           and if left undefined, checks for either variant
+     * @returns {boolean} - True if the character has Great Weapon Fighting
+     */
+    hasGreatWeaponFighting(version) {
+        const check2014 = version === 2014 || version === undefined;
+        const check2024 = version === 2024 || version === undefined;
+        if (!check2014 && !check2024) {
+            console.error("Invalid version for hasGreatWeaponFighting, expected 2014, 2024 or undefined, got", version);
+            return false;
+        }
+        const hasGWF2014 = this.hasClassFeature("Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Fighting Initiate: Great Weapon Fighting") ||
+                this.hasFeat("Fighting Initiate: Great Weapon Fighting");
+        const hasGWF2024 = this.hasClassFeature("Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasFeat("Great Weapon Fighting 2024");
+        return (check2014 && hasGWF2014) || (check2024 && hasGWF2024);
     }
     getClassLevel(name) {
         name = this.fixBloodHunterClassName(name);
@@ -561,7 +656,8 @@ class Character extends CharacterBase {
             "spell_modifiers": this._spell_modifiers,
             "spell_saves": this._spell_saves,
             "spell_attacks": this._spell_attacks,
-            "url": this._url
+            "url": this._url,
+            "version": this._version
         }
     }
 }

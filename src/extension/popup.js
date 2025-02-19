@@ -30,6 +30,9 @@ function createOptionList() {
                     E.a({ id: "openOptions", href: '#', style: "flex-grow: 1;" },
                         E.h4({}, "More Options")
                     ),
+                    E.a({ id: "openEffects", href: '#', style: "flex-grow: 1;" },
+                        E.h4({}, "▼ Effects")
+                    ),
                     E.a({ id: "toggleAdvanced", href: '#', style: "display: none;" },
                         E.h4({}, "▼ Advanced Options")
                     )
@@ -41,8 +44,15 @@ function createOptionList() {
     $("#openOptions").on('click', (ev) => {
         chrome.runtime.openOptionsPage();
     });
+
+    $("#openEffects").on('click', (ev) => {
+        $(".beyond20-options .effects-option").toggle();
+        $(".beyond20-options .advanced-option").hide();
+    }).hide();
+
     $("#toggleAdvanced").on('click', () => {
         $(".beyond20-options .advanced-option").toggle();
+        $(".beyond20-options .effects-option").hide();
     });
 }
 
@@ -105,9 +115,32 @@ function populateCharacter(response) {
         e = createHTMLOption("custom-critical-limit", false, character_settings);
         e.classList.add("advanced-option");
         options.append(e);
+        // effects
+        e = createHTMLOption("effects-exhaustion-2024", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        e = createHTMLOption("effects-exhaustion-2014", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        e = createHTMLOption("effects-bless", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        e = createHTMLOption("effects-bane", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        e = createHTMLOption("effects-enlarge", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        e = createHTMLOption("effects-reduce", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+        $("#openEffects").show();
+
         e = createHTMLOption("versatile-choice", false, character_settings);
         options.append(e);
-        if (response["racial-traits"].includes("Lucky")) {
+
+        if (response["racial-traits"].includes("Lucky") ||
+            response["racial-traits"].includes("Luck")) {
             e = createHTMLOption("halfling-lucky", false, character_settings);
             options.append(e);
         }
@@ -116,8 +149,16 @@ function populateCharacter(response) {
             e = createHTMLOption("brutal-critical", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Brutal Strike")) {
+            e = createHTMLOption("brutal-strike", false, character_settings);
+            options.append(e);
+        }
         if (Object.keys(response.classes).includes("Rogue")) {
             e = createHTMLOption("rogue-sneak-attack", false, character_settings);
+            options.append(e);
+        }
+        if (Object.keys(response.classes).includes("Rogue") && response["class-features"].includes("Sneak Attack 2024") && response["class-features"].includes("Cunning Strike")) {
+            e = createHTMLOption("rogue-cunning-strike", false, character_settings);
             options.append(e);
         }
         if (response["class-features"].includes("Jack of All Trades")) {
@@ -140,6 +181,10 @@ function populateCharacter(response) {
             e = createHTMLOption("great-weapon-master", false, character_settings);
             options.append(e);
         }
+        if (response["feats"].includes("Great Weapon Master 2024")) {
+            e = createHTMLOption("great-weapon-master-2024", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Rage")) {
             e = createHTMLOption("barbarian-rage", false, character_settings);
             options.append(e);
@@ -152,7 +197,7 @@ function populateCharacter(response) {
             e = createHTMLOption("bloodhunter-crimson-rite", false, character_settings);
             options.append(e);
         }
-        if (response["class-features"].includes("Dread Ambusher")) {
+        if (response["class-features"].includes("Dread Ambusher") || response["class-features"].includes("Dread Ambusher 2024")) {
             e = createHTMLOption("ranger-dread-ambusher", false, character_settings);
             options.append(e);
         }
@@ -174,6 +219,11 @@ function populateCharacter(response) {
         }
         if (response["class-features"].includes("Improved Divine Smite")) {
             e = createHTMLOption("paladin-improved-divine-smite", false, character_settings);
+            options.append(e);
+        }
+
+        if (response["class-features"].includes("Radiant Strikes")) {
+            e = createHTMLOption("paladin-radiant-strikes", false, character_settings);
             options.append(e);
         }
         if (response["class-features"].includes("Elemental Fury")) {
@@ -261,7 +311,7 @@ function populateCharacter(response) {
             e = createHTMLOption("artificer-arcane-jolt", false, character_settings);
             options.append(e);
         }
-        if (response["feats"].includes("Charger")) {
+        if (response["feats"].includes("Charger") || response["feats"].includes("Charger 2024")) {
             e = createHTMLOption("charger-feat", false, character_settings);
             options.append(e);
         }
@@ -301,6 +351,10 @@ function populateCharacter(response) {
             e = createHTMLOption("cleric-circle-of-mortality", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Lunar Form: Wild Shape: Improved Lunar Radiance")) {
+            e = createHTMLOption("druid-improved-lunar-radiance", false, character_settings);
+            options.append(e);
+        }
         if (Object.keys(response.classes).includes("Bard") || Object.keys(response.classes).includes("Warlock")) {
             e = createHTMLOption("Glibness", false, character_settings);
             options.append(e);
@@ -308,6 +362,7 @@ function populateCharacter(response) {
 
         e = createHTMLOption("Gift-Alacrity", false, character_settings);
         options.append(e);
+
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);
@@ -326,7 +381,9 @@ function populateCharacter(response) {
             // When loading settings, the discord target combobox gets replaced in order to be filled,
             // so we need to fetch it again to add the advanced-option class to it
             $("#beyond20-option-discord-target").addClass("advanced-option");
+        
         }
+        options.find(".effects-option").hide();
         options.find(".advanced-option").hide();
         $("#toggleAdvanced").show();
     });
@@ -364,7 +421,7 @@ function tabMatches(tab, url) {
 
 function actOnCurrentTab(tab) {
     setCurrentTab(tab);
-    if (urlMatches(tab.url, ROLL20_URL) || isFVTT(tab.title)) {
+    if (isRoll20(tab.title) || isFVTT(tab.title)) {
         const vtt = isFVTT(tab.title) ? "Foundry VTT" : "Roll20";
         const options = $(".beyond20-options");
         options.append(
@@ -374,7 +431,7 @@ function actOnCurrentTab(tab) {
         );
         let e = null;
         if (vtt == "Roll20") {
-            e = createHTMLOption("roll20-template", false);
+            e = createHTMLOption("roll20-template", false, undefined, { advanced: true });
             options.append(e);
         }
         e = createHTMLOption("display-conditions", false);
@@ -394,13 +451,21 @@ function actOnCurrentTab(tab) {
     } else {
         initializeSettings(gotSettings);
     }
-    canAlertify(tab.id);
+    // If on Firefox, we can't use the permissions API from the alertify window
+    // so let the "More Options" open the options page in Firefox itself
+    // unless the popup is opened in an alertify dialog already
+    if (getBrowser() !== "Firefox" || !chrome.runtime.openOptionsPage) {
+        canAlertify(tab.id);
+    }
     // Do not check for permissions if it's running from inside the page script
-    if (!chrome.permissions) return;
+    const chromeOrBrowser = getBrowser() === "Firefox" ? browser : chrome;
+    console.log("Checking permissions for ", tab.url, chrome.permissions, chromeOrBrowser.permissions);
+    if (!chromeOrBrowser.permissions) return;
     // We cannot use the url or its origin, because Firefox, in its great magnificent wisdom
     // decided that ports in the origin would break the whole permissions system
     const origin = `${new URL(tab.url).protocol}//${new URL(tab.url).hostname}/*`;
-    chrome.permissions.contains({origins: [origin]}, (hasPermission) => {
+    const permissions = urlMatches(origin, DISCORD_URL) ? DISCORD_ACTIVITY_PERMISSION_DETAILS : {origins: [origin]};
+    chromeOrBrowser.permissions.contains(permissions).then((hasPermission) => {
         if (!hasPermission) {
             const options = $(".beyond20-options");
             const request = createHTMLOptionEx("default-popup", {
@@ -411,10 +476,13 @@ function actOnCurrentTab(tab) {
             options.prepend(request);
             request.addEventListener("click", (ev) => {
                 console.log("Clicked, requesting permissions!");
-                chrome.permissions.request({origins: [origin]}, function onResponse(response) {
+                chromeOrBrowser.permissions.request(permissions).then((response) => {
                     if (response) {
                         console.log("Permission was granted");
                         request.remove();
+                        if (urlMatches(origin, DISCORD_URL)) {
+                            chrome.runtime.sendMessage({ "action": "discord-permissions-updated", permissions: true });
+                        }
                     } else {
                         console.log("Permission was refused");
                     }

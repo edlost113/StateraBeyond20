@@ -73,6 +73,14 @@ const options_list = {
         "advanced": true
         // callbacks will be added after the functions are defined
     },
+    "roll20-discord-activity": {
+        "title": "Support Roll20 Discord Activity",
+        "description": "Integrate with Roll20's Discord Activity.\nThis requires opening Discord in the browser so Beyond20 can be loaded and communicate with the activity.",
+        "type": "special",
+        "default": null,
+        "advanced": true
+        // callbacks will be added after the functions are defined
+    },
 
     "hide-results-on-whisper-to-discord": {
         "title": "Hide roll results on D&D Beyond when whispering to Discord",
@@ -449,6 +457,52 @@ const character_settings = {
         "type": "string",
         "default": ""
     },
+
+    // effects
+
+    "effects-exhaustion-2024": {
+        "title": "Effect: Exhaustion 2024",
+        "description": "Applies 2024 rules for exhaustion. This condition is cumulative and effects all D20 rolls applying a -2 * exhaustion level modifier to the roll.",
+        "type": "bool",
+        "default": false
+    },
+
+    "effects-exhaustion-2014": {
+        "title": "Effect: Exhaustion 2014",
+        "description": "Applies 2014 rules for exhaustion. This condition is cumulative and applies disadvantage on ability checks at exhaustion >= 1 and disadvantage on attacks and saving throws on exhaustion >= 3.",
+        "type": "bool",
+        "default": false
+    },
+
+    "effects-bless": {
+        "title": "Effect: Bless",
+        "description": "Whenever a target makes an attack roll or a saving throw before the spell ends, the target adds 1d4 to the attack roll or save.",
+        "type": "bool",
+        "default": false
+    },
+
+    "effects-bane": {
+        "title": "Effect: Bane",
+        "description": "Whenever a target makes an attack roll or a saving throw before the spell ends, the target subtracks 1d4 to the attack roll or save.",
+        "type": "bool",
+        "default": false
+    },
+
+    "effects-enlarge": {
+        "title": "Effect: Enlarge",
+        "description": "Until the spell ends, the target also has advantage on Strength checks and Strength saving throws. While these weapons are enlarged, the target's attack with them deal 1d4 extra damage.",
+        "type": "bool",
+        "default": false
+    },
+
+    "effects-reduce": {
+        "title": "Effect: Reduce",
+        "description": "Until the spell ends, the target also has disadvantage on Strength checks and Strength saving throws. While these weapons are reduced, the target's attacks with them deal 1d4 less damage (this can't reduce the damage below 1).",
+        "type": "bool",
+        "default": false
+    },
+
+    // class features
     "artificer-alchemical-savant": {
         "title": "Artificer: Alchemist: Alchemical Savant",
         "description": "Use your Alchemist's supplies as spellcasting focus, dealing extra damage or healing equal to your Intelligence Modifier",
@@ -569,6 +623,12 @@ const character_settings = {
         "type": "bool",
         "default": true
     },
+    "paladin-radiant-strikes": {
+        "title": "Paladin: Radiant Strikes",
+        "description": "Roll an extra 1d8 radiant damage whenever you hit with a melee weapon or an unarmed strike",
+        "type": "bool",
+        "default": true
+    },
     "paladin-invincible-conqueror": {
         "title": "Paladin: Oath of Conquest: Invincible Conqueror",
         "description": "You can harness extraordinary martial prowess for 1 minute.",
@@ -634,6 +694,12 @@ const character_settings = {
         "description": "Send Sneak Attack damage with each attack roll",
         "type": "bool",
         "default": true
+    },
+    "rogue-cunning-strike": {
+        "title": "Rogue: Cunning Strike",
+        "description": "When you deal Sneak Attack damage, you can add Cunning Strike effects to the roll.",
+        "type": "bool",
+        "default": false
     },
     "rogue-assassinate": {
         "title": "Rogue: Assassin: Assassinate Surprise Attack (Apply to next roll only)",
@@ -707,6 +773,12 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "great-weapon-master-2024": {
+        "title": "Feat: Great Weapon Master 2024",
+        "description": "Heavy Weapon Mastery. Apply extra damage equals your Proficiency Bonus.",
+        "type": "bool",
+        "default": true
+    },
     "sharpshooter": {
         "title": "Feat: Sharpshooter (Apply to next roll only)",
         "description": "Apply Sharpshooter -5 penalty to roll and +10 to damage",
@@ -718,6 +790,12 @@ const character_settings = {
         "description": "Roll extra damage die on crit for Brutal Critical and Savage Attacks features",
         "type": "bool",
         "default": true
+    },
+    "brutal-strike": {
+        "title": "Brutal Strike: Roll extra die",
+        "description": "If you use Reckless Attack, you can forgo any Advantage on one Strength-based attack roll of your choice on your turn.",
+        "type": "bool",
+        "default": false
     },
     "protector-aasimar-radiant-soul": {
         "title": "Aasimar: Protector: Radiant Soul",
@@ -736,6 +814,12 @@ const character_settings = {
         "description": "The luck of your people guides your steps",
         "type": "bool",
         "default": true
+    },
+    "druid-improved-lunar-radiance": {
+        "title": "Druid: Improved Lunar Radiance",
+        "description": "Once per turn, you can deal an extra 2d10 Radiant damage to a target you hit with a Wild Shape forms attack.",
+        "type": "bool",
+        "default": false
     },
     "discord-target": {
         "title": "Discord Destination",
@@ -1714,17 +1798,10 @@ function createCustomDomainsSetting(name, short) {
     const description_p = opt.description.split("\n").map(desc => E.p({}, desc));
     for (let p of description_p)
         p.classList.add("select");
-    let apply_button = null;
-    if (getBrowser() === "Firefox") {
-        apply_button = E.div({class: "save button-group"},
-            E.span({}, "You", E.b({}, " must click "), " the Beyond 20 icon from the Firefox toolbar on the VTT page to load the addon")
-        );
-    } else {
-        apply_button = E.div({class: "save button-group"},
-            E.span({}, "You", E.b({}, " must "), " press Apply to request missing permissions"),
-            E.button({ class: "beyond20-option-input btn", type: "button"}, "Apply")
-        );
-    }
+    const apply_button = E.div({class: "save button-group"},
+        E.span({}, "You", E.b({}, " must "), " press Apply to request missing permissions"),
+        E.button({ class: "beyond20-option-input btn", type: "button"}, "Apply")
+    );
     const setting = E.li({
         id: "beyond20-option-custom-domains",
         class: "list-group-item beyond20-option beyond20-option-text" 
@@ -1745,17 +1822,21 @@ function createCustomDomainsSetting(name, short) {
         ev.preventDefault();
         const domains = getCustomDomainsSetting(name);
         for (const url of domains) {
-            chrome.permissions.contains({origins: [url]}, (hasPermission) => {
-                if (hasPermission) return;
-                chrome.permissions.request({origins: [url]}, (response) => {
-                    if (response) {
-                        console.log("Permission was granted");
-                        alertify.success(`Beyond20 will now load automatically on ${url}`);
-                    } else {
-                        console.log("Permission was refused");
-                        alertify.error(`Error requesting permission for ${url}`);
-                    }
-                });
+            const chromeOrBrowser = getBrowser() === "Firefox" ? browser : chrome;
+            if (!chromeOrBrowser.permissions) {
+                alertify.error("Cannot request permissions. Please open the extension's options page and try again");
+                return;
+            }
+            chromeOrBrowser.permissions.request({origins: [url]}).then((response) => {
+                if (response) {
+                    console.log("Permission was granted");
+                    alertify.success(`Beyond20 will now load automatically on ${url}`);
+                } else {
+                    console.log("Permission was refused");
+                    alertify.error(`Error requesting permission for ${url}`);
+                }
+            }).catch(err => {
+                console.error("Error requesting permission for ", url, err);
             });
         }
     });
@@ -1777,6 +1858,92 @@ function getCustomDomainsSetting(name) {
     return cleaned;
 }
 
+
+function createRoll20DiscordActivitySetting(name, short) {
+    const opt = options_list[name];
+    const description_p = opt.description.split("\n").map(desc => E.p({}, desc));
+    for (let p of description_p)
+        p.classList.add("select");
+    const apply_button = E.div({class: "save button-group"},
+        E.span({id: name, name}, "🚫 Permissions missing"),
+        E.button({ class: "beyond20-option-input btn", type: "button"}, "Request")
+    );
+    const label = E.div({ class: "save button-group" },
+        E.span({id: name, name}, "✅ Permissions granted"),
+        E.button({ class: "beyond20-option-input btn", type: "button"}, "Revoke")
+    );
+    const setting = E.li({
+        id: "beyond20-option-roll20-discord-activity",
+        class: "list-group-item beyond20-option beyond20-option-text" 
+    },
+        E.label({ class: "list-content", for: name },
+            E.h4({}, opt.title),
+            ...description_p,
+            apply_button,
+            label,
+        )
+    );
+    const button = $(apply_button).find("button");
+    button.click(ev => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        const chromeOrBrowser = getBrowser() === "Firefox" ? browser : chrome;
+        if (!chromeOrBrowser.permissions) {
+            alertify.error("Cannot request permissions. Please open the extension's options page and try again");
+            return;
+        }
+        chromeOrBrowser.permissions.request(DISCORD_ACTIVITY_PERMISSION_DETAILS).then((response) => {
+            if (response) {
+                console.log("Permission was granted");
+                alertify.success(`Beyond20 will now load automatically on Roll20 Discord activity`);
+                $(label).show();
+                $(apply_button).hide();
+                chrome.runtime.sendMessage({ "action": "discord-permissions-updated", permissions: true });
+            } else {
+                console.log("Permission was refused");
+                alertify.error(`Error requesting permission for Roll20 Discord activity`);
+            }
+        });
+    });
+    // Hide both the apply button and checkbox until we know if we have the permissions
+    $(label).hide();
+    $(apply_button).hide();
+    const revokeButton = $(label).find("button");
+    const chromeOrBrowser = getBrowser() === "Firefox" ? browser : chrome;
+    if (chromeOrBrowser.permissions) {
+        chromeOrBrowser.permissions.contains(DISCORD_ACTIVITY_PERMISSION_DETAILS).then((hasPermission) => {
+            if (hasPermission) {
+                $(label).show();
+            } else {
+                $(apply_button).show();
+            }
+        });
+    } else {
+        // No permissions API? Probably an alertify options dialog on Firefox, assume no permissions found
+        $(apply_button).show();
+    }
+    revokeButton.click(ev => {
+        ev.stopPropagation();
+        ev.preventDefault();
+        if (!chromeOrBrowser.permissions) {
+            alertify.error("Cannot revoke permissions. Please open the extension's options page and try again");
+            return;
+        }
+        chromeOrBrowser.permissions.remove(DISCORD_ACTIVITY_PERMISSION_DETAILS).then((removed) => {
+            if (removed) {
+                $(label).hide();
+                $(apply_button).show();
+                chrome.runtime.sendMessage({ "action": "discord-permissions-updated", permissions: false });
+            }
+        });
+    });
+
+    return setting;
+}
+function setRoll20DiscordActivitySetting(name, settings) {
+}
+function getRoll20DiscordActivitySetting(name) {
+}
 
 function createBackupRestoreSetting(name, short) {
     const backup = (name === "backup-settings");
@@ -1870,6 +2037,9 @@ options_list["hotkeys-bindings"]["get"] = getHotkeysSetting;
 options_list["custom-domains"]["createHTMLElement"] = createCustomDomainsSetting;
 options_list["custom-domains"]["set"] = setCustomDomainsSetting;
 options_list["custom-domains"]["get"] = getCustomDomainsSetting;
+options_list["roll20-discord-activity"]["createHTMLElement"] = createRoll20DiscordActivitySetting;
+options_list["roll20-discord-activity"]["set"] = setRoll20DiscordActivitySetting;
+options_list["roll20-discord-activity"]["get"] = getRoll20DiscordActivitySetting;
 character_settings["discord-target"]["createHTMLElement"] = createDiscordTargetSetting;
 character_settings["discord-target"]["set"] = setDiscordTargetSetting;
 character_settings["discord-target"]["get"] = getDiscordTargetSetting;
