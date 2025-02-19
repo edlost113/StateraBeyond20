@@ -18,6 +18,7 @@ class Character extends CharacterBase {
         this._class_features = [];
         this._racial_traits = [];
         this._feats = [];
+        this._items = [];
         this._actions = [];
         this._spell_modifiers = {}
         this._spell_attacks = {}
@@ -254,7 +255,9 @@ class Character extends CharacterBase {
     }
 
     featureDetailsToList(selector) {
-        const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading']")
+
+        const features = $(selector).find(".ct-feature-snippet > .ct-feature-snippet__heading, .ct-feature-snippet--class > div[class*='styles_heading'], .ct-feature-snippet--racial-trait > div[class*='styles_heading'], .ct-feature-snippet--feat > div[class*='styles_heading'], .ddbc-attunement-slot--filled > .ddbc-attunement-slot__content > .ddbc-attunement-slot__name > span[class*='styles_itemName']")
+
         const feature_list = [];
         for (let feat of features.toArray()) {
             const feat_reference = $(feat).parent().find("span[class*='styles_metaItem'] > p[class*='styles_reference'] > span[class*='styles_name']").eq(0).text();
@@ -310,6 +313,34 @@ class Character extends CharacterBase {
         }
     }
 
+    getFeatureVersionName(feat_name, feat_reference) {
+        if (!feat_reference) return feat_name;
+        let is2024 = false;
+        if((feat_name.toLowerCase() === "great weapon master" ||
+            feat_name.toLowerCase() === "sharpshooter" ||
+            feat_name.toLowerCase() === "dread ambusher" ||
+            feat_name.toLowerCase() === "stalker’s flurry" ||            
+            feat_name.toLowerCase() === "charger" ||
+            feat_name.toLowerCase() === "tavern brawler" ||
+            feat_name.toLowerCase() === "polearm master") && 
+            feat_reference.toLowerCase().includes("2024")) {
+                is2024 = true;
+        } else if ((feat_name.toLowerCase() === "fighting style" ||
+            feat_name.toLowerCase() === "additional fighting style" ||
+            feat_name.toLowerCase() === "great weapon fighting" ||
+            feat_name.toLowerCase() === "sneak attack") &&
+            feat_reference.toLowerCase().includes("free-rules")) {
+                is2024 = true;
+        }
+
+        if (is2024) {
+            // just using something set by us so if it changes in the future we dont care
+            return `${feat_name} 2024`;
+        } else {
+            return feat_name;
+        }
+    }
+
     updateFeatures() {
         let update = false;
         // Use classes instead of level because using XP method, you could reach the higher level before you level up
@@ -335,6 +366,7 @@ class Character extends CharacterBase {
         }); // 2024 class with 2014 classes multiclassed will be treated as 2024 classes
         this._version = traits ? 2024 : 2014;
 
+
         const race_detail = $(".ct-features .ct-content-group:has(.ct-feature-snippet--racial-trait)");
         if (race_detail.length > 0) {
             this._racial_traits = this.featureDetailsToList(race_detail, "Racial Traits");
@@ -355,6 +387,17 @@ class Character extends CharacterBase {
             }
         } else {
             this._feats = this.getSetting("feats", []);
+        }
+
+        const attunement_detail = $(".ct-attunement__group-items");
+        if (attunement_detail.length > 0) {
+            this._items = this.featureDetailsToList(attunement_detail, "items");
+            if (!isListEqual(this._items, this.getSetting("items", []))) {
+                console.log("New Items");
+                update = true;
+            }
+        } else {
+            this._items = this.getSetting("items", []);
         }
 
         const actions_detail = $(".ct-actions-list .ct-actions-list__activatable");
@@ -415,6 +458,7 @@ class Character extends CharacterBase {
                 "class-features": this._class_features,
                 "racial-traits": this._racial_traits,
                 "feats": this._feats,
+                "items": this._items,
                 "actions": this._actions,
                 "spell_modifiers": this._spell_modifiers,
                 "spell_saves": this._spell_saves,
@@ -427,7 +471,22 @@ class Character extends CharacterBase {
             });
         }
     }
-
+    hasGreatWeaponFighting(version) {
+        const check2014 = version === 2014 || version === undefined;
+        const check2024 = version === 2024 || version === undefined;
+        if (!check2014 && !check2024) {
+            console.error("Invalid version for hasGreatWeaponFighting, expected 2014, 2024 or undefined, got", version);
+            return false;
+        }
+        const hasGWF2014 = this.hasClassFeature("Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style: Great Weapon Fighting") ||
+                this.hasClassFeature("Fighting Initiate: Great Weapon Fighting") ||
+                this.hasFeat("Great Weapon Fighting");
+        const hasGWF2024 = this.hasClassFeature("Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasClassFeature("Additional Fighting Style 2024: Great Weapon Fighting") ||
+                this.hasFeat("Great Weapon Fighting 2024");
+        return (check2014 && hasGWF2014) || (check2024 && hasGWF2024);
+    }
     hasClassFeature(name, substring=false) {
         if (substring) return this._class_features.some(f => f.includes(name));
         else return this._class_features.includes(name);
@@ -439,6 +498,10 @@ class Character extends CharacterBase {
     hasFeat(name, substring=false) {
         if (substring) return this._feats.some(f => f.includes(name));
         else return this._feats.includes(name);
+    }
+    hasItemAttuned(name, substring=false) {
+        if (substring) return this._items.some(f => f.includes(name));
+        else return this._items.includes(name);
     }
     hasAction(name, substring=false) {
         if (substring) return this._actions.some(f => f.includes(name));

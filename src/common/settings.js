@@ -351,30 +351,6 @@ const options_list = {
         // callbacks will be added after the functions are defined
     },
 
-    "discord-integration": {
-        "title": "Discord Integration",
-        "description": "You can get rolls sent to Discord by enabling Discord Integration!\n" +
-            "Click the link, follow the instructions and enter your secret key below.",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/discord",
-        "icon": "/images/discord-logo.png",
-        "icon-height": "100%",
-        "icon-width": "auto"
-    },
-
-    "discord-secret": {
-        "type": "migrate",
-        "to": "discord-channels",
-        "default": ""
-    },
-
-    "discord-channels": {
-        "title": "Discord Default Destination Channel",
-        "description": "Default Discord destination channel to send rolls to",
-        "type": "special",
-        "default": null
-    },
-
     "show-changelog": {
         "title": "Show Changelog when installing a new version",
         "description": "When a new version is released and the extension has been updated,\n" +
@@ -437,30 +413,6 @@ const options_list = {
         "advanced": true,
         "default": null
     },
-
-    "donate": {
-        "short": "Buy rations (1 day) to feed my familiar",
-        "title": "Become a patron of the art of software development!",
-        "description": "If you wish to support my work on Beyond 20 or my other D&D related project, subscribe to my patreon " +
-            "or donate via paypal!\nI am grateful for your generosity!",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/rations",
-        "icon": "/images/donate.png",
-        "icon-width": "64",
-        "icon-height": "64"
-    },
-    "donate-advanced": {
-        "short": "Buy rations (1 day) to feed my familiar",
-        "title": "Become a patron of the art of software development!",
-        "description": "If you wish to support my work on Beyond 20 or my other D&D related project, subscribe to my patreon " +
-            "or donate via paypal!\nI am grateful for your generosity!",
-        "type": "link",
-        "default": "https://beyond20.here-for-more.info/rations",
-        "icon": "/images/donate.png",
-        "icon-width": "64",
-        "icon-height": "64",
-        "advanced": true
-    }
 }
 
 const character_settings = {
@@ -626,6 +578,18 @@ const character_settings = {
     "druid-symbiotic-entity": {
         "title": "Druid: Circle of Spores: Symbiotic Entity",
         "description": "Your symbiotic entity lends its power to your melee weapon strikes.",
+        "type": "bool",
+        "default": false
+    },
+    "druid-primal-strike": {
+        "title": "Druid: Primal Strike",
+        "description": "Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form’s attack in Wild Shape, you can cause the target to take an extra 1d8 Cold, Fire, Lightning, or Thunder damage (choose when you hit).",
+        "type": "bool",
+        "default": false
+    },
+    "druid-potent-spellcasting": {
+        "title": "Druid: Potent Spellcasting",
+        "description": "Add your Wisdom modifier to the damage you deal with any Druid cantrip.",
         "type": "bool",
         "default": false
     },
@@ -862,6 +826,18 @@ const character_settings = {
         "description": "Send rolls to a character specific Discord channel",
         "type": "special",
         "default": null
+    },
+    "Glibness": {
+        "title": "Glibness",
+        "description": "Under the effect of the glibness spell",
+        "type": "bool",
+        "default": false
+    },
+    "Gift-Alacrity": {
+        "title": "Gift of Alacrity",
+        "description": "Under the effect of the Gift of Alacrity spell",
+        "type": "bool",
+        "default": false
     },
 }
 
@@ -2055,9 +2031,6 @@ function getBackupRestoreSetting(name) {
 options_list["vtt-tab"]["createHTMLElement"] = createVTTTabSetting;
 options_list["vtt-tab"]["set"] = setVTTTabSetting;
 options_list["vtt-tab"]["get"] = getVTTTabSetting;
-options_list["discord-channels"]["createHTMLElement"] = createDiscordChannelsSetting;
-options_list["discord-channels"]["set"] = setDiscordChannelsSetting;
-options_list["discord-channels"]["get"] = getDiscordChannelsSetting;
 options_list["hotkeys-bindings"]["createHTMLElement"] = createHotkeysSetting;
 options_list["hotkeys-bindings"]["set"] = setHotkeysSetting;
 options_list["hotkeys-bindings"]["get"] = getHotkeysSetting;
