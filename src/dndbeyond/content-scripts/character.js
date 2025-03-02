@@ -805,6 +805,13 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
         damages.push("3d6");
         damage_types.push("Necrotic");
     }
+    
+    if (character.hasItemAttuned("Armor of the White and Black Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+        damages.push("3d6");
+        damage_types.push("Radiant");
+    }
 
     if (character.hasClass("Rogue")) {
         // Rogue: Sneak Attack
