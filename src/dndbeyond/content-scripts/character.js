@@ -552,6 +552,17 @@ function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, set
         damage_types.push("Sharpshooter");
     //    settings_to_change["sharpshooter"] = false;
     }
+
+    // Feats
+    // Great Weapon Master Feat 2024 It applies to longbow and heavy crossbow and any other ranged weapon with heavy property
+    if (to_hit !== null && 
+        character.getSetting("great-weapon-master-2024", true) &&
+        character.hasFeat("Great Weapon Master 2024") &&
+        this.IsHeavy(properties)) {
+        const proficiency = parseInt(character._proficiency);
+        damages.push(proficiency.toString());
+        damage_types.push("Great Weapon Master");
+    }
     
     return to_hit;
 }
@@ -2319,9 +2330,7 @@ function injectRollButton(paneClass) {
     } else if (paneClass == "b20-character-manage-pane") {
         const avatar = $(".b20-character-manage-pane .ddbc-character-avatar__portrait");
         const char_name = $(".b20-character-manage-pane div[class*='styles_characterName'] h1").text().trim();
-        let avatar_link = avatar.css('background-image');
-        if (avatar_link && avatar_link.startsWith("url("))
-            avatar_link = avatar_link.slice(5, -2);
+        const avatar_link = avatar.attr("src");
         if (!avatar_link || isRollButtonAdded())
             return;
         const button = addDisplayButton(() => sendRoll(character, "avatar", avatar_link, { "name": char_name }), avatar, { small: true, append: false, image: false });
