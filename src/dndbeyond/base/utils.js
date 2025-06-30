@@ -559,7 +559,7 @@ async function sendRoll(character, rollType, fallback, args) {
     }
     
     if (req.type === "initiative") {
-        if (req.character.settings["Gift-Alacrity"]) {
+        if ((req.character.settings) && (req.character.settings["Gift-Alacrity"])) {
             req.character.settings["custom-roll-dice"]  = req.character.settings["custom-roll-dice"] + "+1d8"; 
         }
     }
