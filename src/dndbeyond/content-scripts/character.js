@@ -322,7 +322,7 @@ function rollInitiative() {
     //console.log("Initiative " + ("with" if (advantage else "without") + " advantage ) { " + initiative);
 
     if (character.getGlobalSetting("initiative-tiebreaker", false)) {
-        // Set the tiebreaker to the dexterity score but default to case.includes(0) abilities arrary is empty;
+        // Set the tiebreaker to the dexterity score, defaulting to 0 if the abilities array is empty;
         const tiebreaker = character.getAbility("DEX").score;
 
         // Add tiebreaker as a decimal;
@@ -431,7 +431,7 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
                 damage_types.push("Symbiotic Entity");
         }
     }
-
+    
     if (character.hasClass("Paladin")) {
         // Paladin: Improved Divine Smite
         // Radiant Strikes works on melee and unarmed strikes, while Improved Divine Smite
@@ -483,7 +483,8 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Great Weapon Master");
-    //    settings_to_change["great-weapon-master"] = false;
+        const isLocked = character.getSetting("great-weapon-master-lock", false);
+        if(!isLocked) settings_to_change["great-weapon-master"] = false;
     }
 
     if (to_hit !== null && 
@@ -494,6 +495,8 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         const proficiency = parseInt(character._proficiency);
         damages.push(proficiency.toString());
         damage_types.push("Great Weapon Master");
+        const isLocked = character.getSetting("great-weapon-master-2024-lock", false);
+        if(!isLocked) settings_to_change["great-weapon-master-2024"] = false;
     }
     
     // enhanced unarmed strike
@@ -508,7 +511,9 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
         character.getSetting("charger-feat")) {
         damages.push("+5");
         damage_types.push("Charger Feat");
-        settings_to_change["charger-feat"] = false;
+
+        const isLocked = character.getSetting("charger-feat-lock", false);
+        if(!isLocked) settings_to_change["charger-feat"] = false;
     } else if (character.hasFeat("Charger 2024") &&
         character.getSetting("charger-feat")) {
             let charge_dmg = "1d8";
@@ -526,7 +531,9 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
 
             damages.push(charge_dmg);
             damage_types.push("Charger Feat");
-            settings_to_change["charger-feat"] = false;
+
+            const isLocked = character.getSetting("charger-feat-lock", false);
+            if(!isLocked) settings_to_change["charger-feat"] = false;            
     }
     
     return to_hit;
@@ -550,7 +557,8 @@ function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, set
         to_hit += " - 5";
         damages.push("10");
         damage_types.push("Sharpshooter");
-    //    settings_to_change["sharpshooter"] = false;
+        const isLocked = character.getSetting("sharpshooter-lock", false);
+        if(!isLocked) settings_to_change["sharpshooter"] = false;
     }
 
     // Feats
@@ -562,6 +570,8 @@ function handleSpecialRangedAttacks(damages=[], damage_types=[], properties, set
         const proficiency = parseInt(character._proficiency);
         damages.push(proficiency.toString());
         damage_types.push("Great Weapon Master");
+        const isLocked = character.getSetting("great-weapon-master-2024-lock", false);
+        if(!isLocked) settings_to_change["great-weapon-master-2024"] = false;
     }
     
     return to_hit;
@@ -584,6 +594,25 @@ function handleSpecialGeneralAttacks(damages=[], damage_types=[], properties, se
     }
 
     // Class Specific
+    if (character.hasClass("Fighter")) {
+        if(character.hasClassFeature("Psionic Power")) {
+            // HACK ALERT: fixes dndbeyond missing mods but incase they are added in the future we ensure the mod is applied if not present if it is present it is not applied
+            const intelligence = character.getAbility("INT") || {mod: 0};
+            const mod = parseInt(intelligence.mod) || 0;
+            const psychic_action = action_name.toLocaleLowerCase();
+            if(["psionic power: psionic strike", "psionic power: protective field"].includes(psychic_action)) {
+                // Use full modifier, even if deeply negative
+                damages[0] = ensureModifier(damages[0], mod);
+
+                if(mod < 0 && ["psionic power: protective field"].includes(psychic_action)) {
+                    // Set the min value to 1 + (negative mod) ensures that the results are never negative
+                    const minValue = 1 + Math.abs(mod);
+                    damages[0] = damages[0].replace(/[0-9]*d[0-9]+/g, match => `${match}min${minValue}`);
+                }
+            }
+        } 
+    }
+
     if (character.hasClass("Cleric")) {
         // Cleric: Blessed Strikes
         if ((((item_name || action_name) && to_hit != null) || (spell_name && spell_level.includes("Cantrip"))) &&
@@ -708,7 +737,8 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
                 blades_dmg = "8d6"
             damages.push(blades_dmg);
             damage_types.push("Psychic Blades");
-            settings_to_change["bard-psychic-blades"] = false;
+            const isLocked = character.getSetting("bard-psychic-blades-lock", false);
+            if(!isLocked) settings_to_change["bard-psychic-blades"] = false;
         }
     }
 
@@ -777,7 +807,8 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
                         : (character.hasClassFeature("Stalker’s Flurry 2024") ? "2d8" : "2d6")
                 );
                 damage_types.push("Dread Ambusher");
-                settings_to_change["ranger-dread-ambusher"] = false;
+                const isLocked = character.getSetting("ranger-dread-ambusher-lock", false);
+                if(!isLocked) settings_to_change["ranger-dread-ambusher"] = false;
             }
         }
         
@@ -841,6 +872,9 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
 
             damages.push(sneak_attack);
             damage_types.push("Sneak Attack");
+
+            const isLocked = character.getSetting("rogue-sneak-attack-lock", false);
+            if(!isLocked) settings_to_change["rogue-sneak-attack"] = false;
         }
     }
 
@@ -1145,7 +1179,10 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
             character.getSetting("rogue-assassinate", false)) {
             roll_properties["critical-limit"] = 1;
             roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-            settings_to_change["rogue-assassinate"] = false;
+
+            const isLocked = character.getSetting("rogue-assassinate-lock", false);
+            if(!isLocked) settings_to_change["rogue-assassinate"] = false;
+            
         }
         // Sorcerer: Clockwork Soul - Trance of Order
         if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
@@ -1401,7 +1438,9 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
             character.getSetting("rogue-assassinate", false)) {
             roll_properties["critical-limit"] = 1;
             roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-            settings_to_change["rogue-assassinate"] = false;
+            
+            const isLocked = character.getSetting("rogue-assassinate-lock", false);
+            if(!isLocked) settings_to_change["rogue-assassinate"] = false;
         }
         // Sorcerer: Clockwork Soul - Trance of Order
         if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
@@ -1789,11 +1828,17 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
             character.getSetting("rogue-assassinate", false)) {
             roll_properties["critical-limit"] = 1;
             roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-            settings_to_change["rogue-assassinate"] = false;
+            
+            const isLocked = character.getSetting("rogue-assassinate-lock", false);
+            if(!isLocked) settings_to_change["rogue-assassinate"] = false;
         }
         // Sorcerer: Clockwork Soul - Trance of Order
         if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
             roll_properties.d20 = "1d20min10";
+        // Spells: Toll the Dead
+        // HACK: using versatile to allow toll the dead to roll both damage types separate
+        if(spell_full_name.toLowerCase() === "toll the dead" && character.getSetting("toll-choice") === "both")
+            roll_properties["is_versatile"] = true;
         // Apply batched updates to settings, if any:
         if (Object.keys(settings_to_change).length > 0)
             character.mergeCharacterSettings(settings_to_change);

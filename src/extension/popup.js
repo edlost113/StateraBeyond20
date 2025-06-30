@@ -139,6 +139,9 @@ function populateCharacter(response) {
         e = createHTMLOption("versatile-choice", false, character_settings);
         options.append(e);
 
+        e = createHTMLOption("toll-choice", false, character_settings);
+        options.append(e);
+
         if (response["racial-traits"].includes("Lucky") ||
             response["racial-traits"].includes("Luck")) {
             e = createHTMLOption("halfling-lucky", false, character_settings);
@@ -287,7 +290,7 @@ function populateCharacter(response) {
             e = createHTMLOption("wildfire-spirit-enhanced-bond", false, character_settings);
             options.append(e);
         }
-        if (response["actions"].includes("Channel Divinity: Sacred Weapon")) {
+        if (response["class-features"].includes("Channel Divinity: Channel Divinity: Sacred Weapon") || response["class-features"].includes("Sacred Weapon")) {
             e = createHTMLOption("paladin-sacred-weapon", false, character_settings);
             options.append(e);
         }

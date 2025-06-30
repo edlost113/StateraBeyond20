@@ -164,6 +164,55 @@ async function queryCunningStrike() {
     return selection;
 }
 
+async function applyRogueSneakAttack(character, name, properties, damages,
+                                     damage_types, roll_properties,
+                                     settings_to_change) {
+    if (!(character.hasClass("Rogue") &&
+          character.hasClassFeature("Sneak Attack 2024") &&
+          !name.includes("Psionic Power: Psychic Whispers") &&
+          (
+              character.getSetting("rogue-sneak-attack", false) ||
+              (
+                  name.includes("Sneak Attack") &&
+                  character.getSetting("rogue-cunning-strike", false)
+              )
+          ) && (
+              properties["Attack Type"] === "Ranged" ||
+              (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
+              name.includes("Psychic Blade") ||
+              name.includes("Shadow Blade") ||
+              name.includes("Sneak Attack")
+          ))) {
+        return;
+    }
+
+    let sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
+    if (character.hasClassFeature("Cunning Strike") && character.getSetting("rogue-cunning-strike", false)) {
+        const choices = await queryCunningStrike();
+        const validChoices = [];
+        for (const choice of choices) {
+            if (choice.action === "None") continue;
+            if (choice["die"] > sneakDieCount) continue;
+            sneakDieCount -= choice["die"];
+            validChoices.push(choice);
+        }
+        roll_properties["cunning-strike-effects"] = validChoices.map(m => m.action).join(", ") || undefined;
+        const isLocked = character.getSetting("rogue-cunning-strike-lock", false);
+        if(!isLocked) settings_to_change["rogue-cunning-strike"] = false;
+    }
+
+    const sneak_attack = sneakDieCount > 0 ? `${sneakDieCount}d6` : "0";
+    if (name.includes("Sneak Attack")) {
+        damages[0] = sneak_attack;
+    } else {
+        damages.push(sneak_attack);
+        damage_types.push("Sneak Attack");
+    }
+
+    const isLocked = character.getSetting("rogue-sneak-attack-lock", false);
+    if(!isLocked) settings_to_change["rogue-sneak-attack"] = false;
+}
+
 async function buildAttackRoll(character, attack_source, name, description, properties,
                          damages = [], damage_types = [], to_hit = null,
                          brutal = 0, force_to_hit_only = false, force_damages_only = false, {weapon_damage_length=0}={}, settings_to_change = []) {
@@ -246,10 +295,17 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             if (no_type_idx > -1) {
                 damage_types[no_type_idx] = "Chaotic Energy";
             }
-        } else if (roll_properties.name == "Toll the Dead") {
-            const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Is the target missing any of its hit points ?", { "d12": "Yes", "d8": "No" }, "ttd_dice", ["d12", "d8"]);
-            if (ttd_dice === null) return null;
-            damages[0] = damages[0].replace("d8", ttd_dice);
+        } else if (roll_properties.name.includes("Toll the Dead")) {
+            if (character.getSetting("toll-choice") === "both") {
+                damages.splice(1, 0, damages[0].replace("d8", "d12"));
+                damage_types.splice(1, 0, damage_types[0] + ' (Missing HP)');
+                damage_types[0] = damage_types[0] + ' (Full HP)';
+            } else {
+                const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Is the target missing any of its hit points ?", { "d12": "Yes", "d8": "No" }, "ttd_dice", ["d12", "d8"]);
+                if (ttd_dice === null) return null;
+                damages[0] = damages[0].replace("d8", ttd_dice);
+                damage_types[0] = damage_types[0] + (ttd_dice === "d8" ? ' (Full HP)' : ' (Missing HP)');
+            }
         } else if (roll_properties.name == "Consumption (2024)") {
             const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Did you use a blood die ?", { "d12": "Yes", "d6": "No" }, "ttd_dice", ["d12", "d6"]);
             if (ttd_dice === null) return null;
@@ -271,37 +327,9 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             if (choice === null) return null; // Query was cancelled;
         }
 
-        // TODO: refactor into a method and remove it from build attack roll 
-        if (character.hasClass("Rogue") && character.hasClassFeature("Sneak Attack 2024") && 
-            character.getSetting("rogue-sneak-attack", false) && 
-            !name.includes("Psionic Power: Psychic Whispers") && 
-            (properties["Attack Type"] == "Ranged" ||
-            (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
-            name.includes("Psychic Blade") ||
-            name.includes("Shadow Blade") ||
-            name.includes("Sneak Attack"))) {
-            let sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
-            // Rogue: Sneak Attack
-            if (character.hasClassFeature("Cunning Strike") && character.getSetting("rogue-cunning-strike", false)) {
-                const choices = await queryCunningStrike();
-                const validChoices = [];
-                for (const choice of choices) {
-                    if (choice.action === "None") continue;
-                    if (choice["die"] > sneakDieCount) continue;
-                    sneakDieCount -= choice["die"];
-                    validChoices.push(choice);
-                }
-                roll_properties["cunning-strike-effects"] = validChoices.map(m => m.action).join(", ") || undefined;
-                settings_to_change["rogue-cunning-strike"] = false;
-            }
-            const sneak_attack = sneakDieCount > 0 ? `${sneakDieCount}d6` : "0";
-            if (name.includes("Sneak Attack")) {
-                damages[0] = sneak_attack;
-            } else {
-                damages.push(sneak_attack);
-                damage_types.push("Sneak Attack");
-            }
-        }
+        await applyRogueSneakAttack(character, name, properties, damages,
+                                   damage_types, roll_properties,
+                                   settings_to_change);
         const crits = damagesToCrits(character, damages, damage_types);
         const crit_damages = [];
         const crit_damage_types = [];
@@ -395,6 +423,15 @@ async function buildAttackRoll(character, attack_source, name, description, prop
     }
 
     return roll_properties;
+}
+
+function ensureModifier(damageStr, modValue) {
+    const hasMod = /\d+d\d+\s*[+-]\s*\d+/.test(damageStr);
+    if (hasMod) return damageStr;
+
+    // If mod is positive, add '+' explicitly
+    const sign = modValue >= 0 ? "+" : "";
+    return `${damageStr}${sign}${modValue}`;
 }
 
 function applyGWFIfRequired(action_name, properties, damage) {

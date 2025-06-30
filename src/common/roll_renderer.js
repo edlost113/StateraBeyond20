@@ -48,7 +48,7 @@ class Beyond20RollRenderer {
             const value = choices[option] || option;
             html += `<option value="${option}"${isSelected ? " selected" : ""}>${value}</option>`;
         }
-        html += `;</select></div></form>`;
+        html += `</select></div></form>`;
         return new Promise((resolve) => {
             this._prompter.prompt(title, html, "Roll").then((html) => {
                 if (html) {
@@ -76,7 +76,7 @@ class Beyond20RollRenderer {
             const value = choices[option] || option;
             html += `<option value="${option}"${isSelected ? " selected" : ""}>${value}</option>`;
         }
-        html += `;</select></div>`;
+        html += `</select></div>`;
 
         // query two
         html += `<div class="beyond20-form-row"><label>${question2}</label><select id="${select_id}-two" name="${select_id}-two">`;
@@ -87,7 +87,7 @@ class Beyond20RollRenderer {
             const value = choices2[option] || option;
             html += `<option value="${option}"${isSelected ? " selected" : ""}>${value}</option>`;
         }
-        html += `;</select></div>`;
+        html += `</select></div>`;
         
         html += `</form>`;
         return new Promise((resolve) => {
@@ -377,6 +377,21 @@ class Beyond20RollRenderer {
                 delete total_damages["Critical 2-Handed Damage"];
                 total_damages["Critical 2-Handed Damage"] = two_handed;
             }
+            // HACK: need to be simplified and merged with the code above
+            if(request.name.includes("Toll the Dead") && request.character.settings["toll-choice"] === "both") {
+                if(total_damages["2-Handed Damage"]) {
+                    total_damages["Full HP Damage"] = total_damages["1-Handed Damage"];
+                    total_damages["Missing HP Damage"] = total_damages["2-Handed Damage"];
+                    delete total_damages["1-Handed Damage"];
+                    delete total_damages["2-Handed Damage"];
+                }
+                if (total_damages["Critical 2-Handed Damage"]) {
+                    total_damages["Critical Full HP Damage"] = total_damages["Critical 1-Handed Damage"];
+                    total_damages["Critical Missing HP Damage"] = total_damages["Critical 2-Handed Damage"];
+                    delete total_damages["Critical 1-Handed Damage"];
+                    delete total_damages["Critical 2-Handed Damage"];
+                }
+            }
             html += "<div class='beyond20-roll-result'><b><hr/></b></div>";
         }
 
@@ -411,8 +426,11 @@ class Beyond20RollRenderer {
         const isWhispering = request.whisper === WhisperType.YES;
         const isSendingResultToDiscordOnly = this._settings["vtt-tab"] && this._settings["vtt-tab"].vtt === "dndbeyond";
         const shouldHideResultsOnWhispersToDiscord = this._settings["hide-results-on-whisper-to-discord"];
+        const useDD = this._settings["use-digital-dice"];
+        const shouldHideResultswithDD = this._settings["hide-results-with-digital-dice"];
 
-        const canPostHTML = !isWhispering || !isSendingResultToDiscordOnly || !shouldHideResultsOnWhispersToDiscord;
+        const canPostHTML = !(isWhispering && isSendingResultToDiscordOnly && shouldHideResultsOnWhispersToDiscord) &&
+                            !(useDD && shouldHideResultswithDD);
 
         const json_attack_rolls = attack_rolls.map(r => r.toJSON ? r.toJSON() : r);
         const json_damage_rolls = damage_rolls.map(([l, r, f]) => r.toJSON ? [l, r.toJSON(), f] : [l, r, f]);
