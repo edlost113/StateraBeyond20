@@ -262,6 +262,22 @@ async function buildAttackRoll(character, attack_source, name, description, prop
     if (damages.length > 0) {
         roll_properties["damages"] = damages;
         roll_properties["damage-types"] = damage_types;
+
+        if (character.hasItemAttuned("Spine of Mol Krad", true)) {
+            const num = parseInt(properties["cast-at"], 10) || 0; 
+            let counter = 1;
+
+            for (let i = 0; i < num; i++) {
+                counter++;
+            }
+            
+            damages.push(counter.toString());
+            if (damage_types.includes('Necrotic')) {
+                damage_types.push("Spine of Mol Krad (Necrotic)");
+            } else if (damage_types.includes('Psychic')) {
+                damage_types.push("Spine of Mol Krad (Psychic)");
+            }
+        }
         
         if (roll_properties.name === "Chromatic Orb") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Thunder"]);

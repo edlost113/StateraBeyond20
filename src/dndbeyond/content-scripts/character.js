@@ -1774,6 +1774,9 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
             critical_limit = 19;
         if (spell_full_name === "Blade of Disaster")
             critical_limit = 18;
+
+        properties["cast-at"] = castas;
+
         const roll_properties = await buildAttackRoll(character,
             "spell",
             spell_name,
