@@ -902,6 +902,12 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "Chrono-Fungal-Surge": {
+        "title": "Chrono-Fungal Surge",
+        "description": "As a bonus action, you may flood your magic with unstable temporal energy. For 1 minute: Your spells deal +1d6 necrotic damage. At the end of your turn, roll a d6. On a 1, you suffer 1 level of exhaustion.",
+        "type": "bool",
+        "default": false
+    },
 }
 
 

@@ -264,6 +264,10 @@ async function buildAttackRoll(character, attack_source, name, description, prop
         roll_properties["damage-types"] = damage_types;
 
         if (character.hasItemAttuned("Spine of Mol Krad", true)) {
+            if ((character._settings) && (character._settings["Chrono-Fungal-Surge"])) {
+                damages.push("1d6");
+                damage_types.push("Spine of Mol Krad: Chrono-Fungal Surge (Necrotic)");
+            }
             const num = parseInt(properties["cast-at"], 10) || 0; 
             let counter = 1;
 
@@ -272,9 +276,9 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             }
             
             damages.push(counter.toString());
-            if (damage_types.includes('Necrotic')) {
+            if (damage_types.some(item => item.includes('Necrotic'))) {
                 damage_types.push("Spine of Mol Krad (Necrotic)");
-            } else if (damage_types.includes('Psychic')) {
+            } else if (damage_types.some(item => item.includes('Psychic'))) {
                 damage_types.push("Spine of Mol Krad (Psychic)");
             }
         }
