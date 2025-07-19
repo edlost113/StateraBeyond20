@@ -275,10 +275,11 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                 counter++;
             }
             
-            damages.push(counter.toString());
             if (damage_types.some(item => item.includes('Necrotic'))) {
+                damages.push(counter.toString());
                 damage_types.push("Spine of Mol Krad (Necrotic)");
             } else if (damage_types.some(item => item.includes('Psychic'))) {
+                damages.push(counter.toString());
                 damage_types.push("Spine of Mol Krad (Psychic)");
             }
         }
