@@ -370,6 +370,9 @@ function populateCharacter(response) {
             e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
             options.append(e);
         }
+
+        e = createHTMLOption("Potion-Giant-Size", false, character_settings);
+        options.append(e);
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);

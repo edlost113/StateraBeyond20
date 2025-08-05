@@ -984,8 +984,19 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
                 if(damages.length == 0) {
                     if (versatile_damage != "") {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = versatile_damage.split("d");
+                            const numberBeforeD = 3 * parseInt(versatile_damage.split('d')[0], 10);
+                            versatile_damage = numberBeforeD + "d" + parts[1];
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         versatile_damage = applyGWFIfRequired(item_name, properties, versatile_damage);
                     } else {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = damage.split("d");
+                            const numberBeforeD = 3 * parseInt(damage.split('d')[0], 10);
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         damage = applyGWFIfRequired(item_name, properties, damage);
                     }
                 }
