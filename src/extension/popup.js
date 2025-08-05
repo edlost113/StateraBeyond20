@@ -366,9 +366,10 @@ function populateCharacter(response) {
         e = createHTMLOption("Gift-Alacrity", false, character_settings);
         options.append(e);
 
-        e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
-        options.append(e);
-
+        if (Object.keys(response.classes).includes("Wizard")) {
+            e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
+            options.append(e);
+        }
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);

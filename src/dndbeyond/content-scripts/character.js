@@ -136,6 +136,16 @@ async function rollSkillCheck(paneClass) {
         }
     }
 
+    //True Madness for wizards
+    if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
+    }
+
+    //True Madness for clerics
+    if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
+    }
+
     // Mark of Detection Half-Elf - Deductive Intuition
     if (character.hasRacialTrait("Deductive Intuition") && (skill_name == "Investigation" || skill_name == "Insight")) {
         roll_properties.modifier += "+1d4";
@@ -1262,6 +1272,14 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Mark of Hospitality Halfing - Ever Hospitable
                 if (character.hasRacialTrait("Ever Hospitable") && is_tool && (item_name == "Brewer's Supplies" || item_name == "Cook's Utensils"))
                     roll_properties.modifier += "+1d4";
+                //True Madness for wizards
+                if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
+                //True Madness for wizards
+                if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
                 // Mark of Making Human - Artisan's Intuition
                 if (character.hasRacialTrait("Artisan’s Intuition") && is_tool)
                     roll_properties.modifier += "+1d4";
