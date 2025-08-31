@@ -862,10 +862,7 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
         damages.push("3d6");
         damage_types.push("Necrotic");
         damages.push("3d6");
-        damage_types.push("Radiant");
-        damages.push("6d6");
-        damage_types.push("Healing");
-        
+        damage_types.push("Radiant");        
     }
 
     if (character.hasClass("Rogue")) {
