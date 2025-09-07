@@ -2898,7 +2898,7 @@ function documentModified(mutations, observer) {
                 const paneClass = SPECIAL_PANES.initiative;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
-            } else if (sidebar.find("span[class*='ddbc-action-name']").length > 0) {
+            }  else if (sidebar.find("span[class*='ddbc-action-name']").length > 0 || sidebar.parent().find("div[class*='ct-item-detail']").length > 0) {
                 const paneClass = SPECIAL_PANES.action;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
