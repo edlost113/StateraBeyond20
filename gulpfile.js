@@ -200,7 +200,7 @@ gulp.task("copy-libs", () => {
 });
 
 gulp.task("copy-images", () => {
-    return gulp.src("images/**")
+    return gulp.src("images/**", {encoding: false})
         .pipe(gulp.dest('./build/base/images/'));
 });
 
@@ -219,23 +219,23 @@ gulp.task("build-base", gulp.parallel([
 // Creates the specific folders for Chrome and Firefox
 
 gulp.task("copy-firefox-dist", () => {
-    return gulp.src("./dist/**")
+    return gulp.src("./dist/**", {encoding: false})
         .pipe(gulp.dest('./build/firefox/dist/'));
 });
 
 gulp.task("copy-chrome-dist", () => {
-    return gulp.src("./dist/**")
+    return gulp.src("./dist/**", {encoding: false})
         .pipe(gulp.dest('./build/chrome/dist/'));
 });
 
 
 gulp.task("copy-firefox-from-base", gulp.series("build-base", () => {
-    return gulp.src("./build/base/**")
+    return gulp.src("./build/base/**", {encoding: false})
         .pipe(gulp.dest('./build/firefox/'));
 }));
 
 gulp.task("copy-chrome-from-base", gulp.series("build-base", () => {
-    return gulp.src("./build/base/**")
+    return gulp.src("./build/base/**", {encoding: false})
         .pipe(gulp.dest('./build/chrome/'));
 }));
 

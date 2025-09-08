@@ -1,6 +1,6 @@
 {
-	"name": "Beyond 20",
-	"version": "2.16.2",
+	"name": "Eddies Beyond 20",
+	"version": "2.10.0",
 	"manifest_version": 2,
 	"description": "Integrates the D&D Beyond Character Sheets with Roll20 and Foundry VTT.",
 	"permissions": [
@@ -18,7 +18,7 @@
 	],
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "beyond20@kakaroto.homelinux.net"
+			"id": "beyond20@edlost.com"
 		}
 	},
 	"icons": {

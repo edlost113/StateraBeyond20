@@ -1,6 +1,6 @@
 {
     "name": "beyond20",
-    "version": "2.16.2",
+    "version": "2.10.0",
     "description": "Beyond20: D&D Beyond & Roll20/Foundry VTT Integration",
     "directories": {
         "doc": "docs"
@@ -20,18 +20,18 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/kakaroto/Beyond20.git"
+        "url": "git+https://github.com/Edlost113/StateraBeyond20.git"
     },
     "keywords": [],
     "author": "",
     "license": "GNU",
     "bugs": {
-        "url": "https://github.com/kakaroto/Beyond20/issues"
+        "url": "https://github.com/edlost113/StateraBeyond20/issues"
     },
-    "homepage": "https://beyond20.here-for-more.info",
+    "homepage": "https://github.com/edlost113/StateraBeyond20",
     "devDependencies": {
         "cross-var": "^1.1.0",
-        "gulp": "^4.0.2",
+        "gulp": "^5.0.0",
         "gulp-clean": "^0.4.0",
         "gulp-concat": "^2.6.1",
         "gulp-rename": "^2.0.0",

@@ -272,6 +272,27 @@ async function buildAttackRoll(character, attack_source, name, description, prop
     if (damages.length > 0) {
         roll_properties["damages"] = damages;
         roll_properties["damage-types"] = damage_types;
+
+        if (character.hasItemAttuned("Spine of Mol Krad", true)) {
+            if ((character._settings) && (character._settings["Chrono-Fungal-Surge"])) {
+                damages.push("1d6");
+                damage_types.push("Spine of Mol Krad: Chrono-Fungal Surge (Necrotic)");
+            }
+            const num = parseInt(properties["cast-at"], 10) || 0; 
+            let counter = 1;
+
+            for (let i = 0; i < num; i++) {
+                counter++;
+            }
+            
+            if (damage_types.some(item => item.includes('Necrotic'))) {
+                damages.push(counter.toString());
+                damage_types.push("Spine of Mol Krad (Necrotic)");
+            } else if (damage_types.some(item => item.includes('Psychic'))) {
+                damages.push(counter.toString());
+                damage_types.push("Spine of Mol Krad (Psychic)");
+            }
+        }
         
         if (roll_properties.name === "Chromatic Orb") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Thunder"]);
@@ -290,6 +311,9 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Dragon's Breath") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison"]);
+            if (choice === null) return null; // Query was cancelled;
+        } else if (roll_properties.name === "Sorcerous Burst") {
+            const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Psychic", "Thunder"]);
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name.includes("Chaos Bolt")) {
             let base_damage = null;
@@ -319,7 +343,20 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                 damages[0] = damages[0].replace("d8", ttd_dice);
                 damage_types[0] = damage_types[0] + (ttd_dice === "d8" ? ' (Full HP)' : ' (Missing HP)');
             }
-        }  else if (roll_properties.name === "Spirit Shroud") {
+        } else if (roll_properties.name == "Consumption (2024)") {
+            const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Did you use a blood die ?", { "d12": "Yes", "d6": "No" }, "ttd_dice", ["d12", "d6"]);
+            if (ttd_dice === null) return null;
+            damages[0] = damages[0].replace("d6", ttd_dice);
+        } else if (roll_properties.name == "Theft of Vitae") {
+            const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Did you use a blood die ?", { "d12": "Yes", "d6": "No" }, "ttd_dice", ["d12", "d6"]);
+            if (ttd_dice === null) return null;
+            damages[0] = damages[0].replace("d6", ttd_dice);
+        } else if (roll_properties.name == "Dark Sacrament") {
+            const ttd_dice = await dndbeyondDiceRoller.queryGeneric(roll_properties.name, "Did you use a blood die ?", { "d12": "Yes", "d6": "No" }, "ttd_dice", ["d12", "d6"]);
+            if (ttd_dice === null) return null;
+            damages[1] = damages[1].replace("d6", ttd_dice);
+        }  
+        else if (roll_properties.name === "Spirit Shroud") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Cold", "Necrotic", "Radiant"]);
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Destructive Wave") {
@@ -362,6 +399,16 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                     }
                 }
             }
+            if (character.hasFeat("Boon of Critical Attack Master")) {
+                for (let i = 0; i < damage_types.length; i++) {
+                    let damage = damagesToCrits(character, [damages[i]]);
+                    if (damage.length > 0 && damage[0] != "") {
+                        crit_damages.push(damage[0]);
+                        crit_damage_types.push("Boon of Critical Attack Master("+damage_types[i]+")" );
+                    }
+                }
+            }
+
             if (roll_properties.name === "Blade of Disaster")
                 crit_damages[0] = damagesToCrits(character, ["8d12"])[0];
             if (roll_properties.name === "Jim’s Magic Missile")
@@ -556,7 +603,12 @@ async function sendRoll(character, rollType, fallback, args) {
             addEffect(req, `Exhaustion (${req.character.exhaustion})`);
         }
     }
-        
+    
+    if (req.type === "initiative") {
+        if ((req.character.settings) && (req.character.settings["Gift-Alacrity"])) {
+            req.character.settings["custom-roll-dice"]  = req.character.settings["custom-roll-dice"] + "+1d8"; 
+        }
+    }
     if (req.whisper === WhisperType.QUERY) {
         req.whisper = await dndbeyondDiceRoller.queryWhisper(args.name || rollType, is_monster);
         if (req.whisper === null) return; // Query was cancelled
