@@ -65,7 +65,9 @@ class DigitalDice {
         const dicenotation = result.find(".dice_result__info__dicenotation").text();
 
         const diceMatches = reMatchAll(/([0-9]*)d([0-9]+)(kh1|kl1)?/, dicenotation) || [];
-        const results = breakdown.split("+");
+        // Remove parenthesis around dice results from breakdown, which get added by AboveVTT extension
+        const results = breakdown.replace(/^\(([^()]*)\)/, "$1").split(/\s*\+\s*/);
+        
         this._dice.forEach(d => d._rolls = []);
         for (let match of diceMatches) {
             const amount = parseInt(match[1]);
@@ -75,8 +77,8 @@ class DigitalDice {
                 let rolls = [];
                 if (mod) {
                     const result = results.shift();
-                    if (result.match(/\([0-9,]+\)/)) {
-                        rolls = result.slice(1, -1).split(",").map(r => ({roll: parseInt(r)}));
+                    if (result.match(/(?:\([0-9,]+\)|[0-9,]+)/)) {
+                        rolls = result.split(",").map(r => ({roll: parseInt(r)}));
                         // Don't try to parse the result of the results as if we had just parsed the first dice roll
                         i += rolls.length - 1;
                         if (mod === "kh1") {
@@ -269,10 +271,15 @@ class DigitalDiceManager {
         }
     }
     static _parseCustomRoll(notification) {
-        const name = $(`#${notification} .dice_result .dice_result__info__title`).text();
-        const formula = $(`#${notification} .dice_result .dice_result__info__dicenotation`).text();
+        const name = $(`#${notification} .dice_result .dice_result__info__title`).eq(0).text().trim();
+        const formula = $(`#${notification} .dice_result .dice_result__info__dicenotation`).text().trim();
+        const target = $(`#${notification} .dice_result .dice_result__info__targetdetail`).text().toLowerCase();
+        if (target.includes("self")) {
+            console.log("Digital Dice rolled to self, not sending to VTT");
+            return;
+        }
         const roll = new DNDBRoll(formula)
-        const digitalRoll = new DigitalDice(name, [roll])
+        const digitalRoll = new DigitalDice(name, [roll], {whisper: target !== ""});
         digitalRoll.parseNotification(notification, true);
         return digitalRoll;
     }

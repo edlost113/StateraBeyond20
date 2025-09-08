@@ -1,3 +1,45 @@
+v2.16.2 (September 4th 2025)
+===
+
+Another small hotfix update, as D&D Beyond updated their character sheet which broke rolling items about 30 minutes after we published the last update.
+
+v2.16.1 (September 2nd 2025)
+===
+
+This is a small hotfix for yesterday's release, due to a bug when rolling attacks with the Rogue's Sneak Attack option enabled.
+
+
+v2.16.0 (August 31st 2025)
+===
+
+Hi,
+
+We're releasing today a small Beyond20 update which has fixes for Psy Warrior attacks, Reckless Attacks as well as fixing rolls made with D&D Beyond's interface for rolling with advantage/disadvantage.
+
+This update also adds support for the Rogue's Assassinate class feature from the 2024 rules, which behaves differently from the 2014 PHB rules for Assassinate.
+
+As usual, a big thank you to [@dmportella](https://github.com/dmportella) for his changes, as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Enjoy!
+
+
+v2.15.0 (July 13th 2025)
+===
+
+Hi,
+
+Time for another Beyond20 update, with many fixes and some exciting new features as well!
+
+In this update, we're adding support for Foundry v13, which was recently released. I know many of you have been eager to use Beyond20 with the new v13 update! Thanks to [@sirrio](https://github.com/sirrio) for contributing the fix!
+
+Another cool feature I'm excited about is the ability to lock/unlock some of the per-character settings. This feature, brought to you by [@dmportella](https://github.com/dmportella), would allow you, for example, to enable Sneak Attack only for the next roll, or enable Great Weapon Master permanently, so it doesn't reset after each attack.
+
+There are many other improvements in this release, check out the full [Changelog](/Changelog#v2150) to see all the changes.
+
+As usual, a big thank you to our contributors, as well as to my generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters. 
+
+Have fun!
+
 
 v2.14.0 (May 3rd 2025)
 ===

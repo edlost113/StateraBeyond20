@@ -192,6 +192,10 @@ function populateCharacter(response) {
             e = createHTMLOption("barbarian-rage", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Reckless Attack")) {
+            e = createHTMLOption("barbarian-reckless", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Divine Fury")) {
             e = createHTMLOption("barbarian-divine-fury", false, character_settings);
             options.append(e);
@@ -243,6 +247,10 @@ function populateCharacter(response) {
         }
         if (response["class-features"].includes("Assassinate")) {
             e = createHTMLOption("rogue-assassinate", false, character_settings);
+            options.append(e);
+        }
+        if (response["class-features"].includes("Assassinate 2024")) {
+            e = createHTMLOption("rogue-assassinate-2024", false, character_settings);
             options.append(e);
         }
         if (response["class-features"].includes("Giant’s Might")) {

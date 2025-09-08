@@ -1,3 +1,42 @@
+v2.16.2 (September 4th 2025)
+===
+- **Bugfix**: Fix rolling items after DDB site update (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix formula of additional custom damage when using Sorcerous Burst (by [@dmportella](https://github.com/dmportella))
+
+v2.16.1 (September 2nd 2025)
+===
+- **Bugfix**: Fix rolling attacks with Sneak Attack option enabled (by [@dmportella](https://github.com/dmportella))
+
+
+v2.16.0 (August 31st 2025)
+===
+- **Feature**: Add support for Rogue: Assassinate from PHB 2024 rules
+- **Bugfix**: Fix dice calculation when using DDB's interface to roll with advantage/disadvantage (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix using reckless attacks without enabling Rage (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix Psy Warrior attacks (by [@dmportella](https://github.com/dmportella))
+- **Misc**: Fix Beyond 20 button style for ability/saving throws in 2024 monster stat blocks so it's more consistent
+
+
+v2.15.0 (July 13th 2025)
+===
+- **Feature**: *FVTT*: Add support for Foundry v13 and dnd5e system 5.x+ (by [@sirrio](https://github.com/sirrio))
+- **Feature**: Add a new locking system for some per-character settings (by [@dmportella](https://github.com/dmportella))
+- **Feature**: Add support for Psionic warrior actions (by [@dmportella](https://github.com/dmportella))
+- **Feature**: Add support for rolling both types of damages with Toll the Dead (by [@dmportella](https://github.com/dmportella))
+- **Feature**: Add support for Barbarian's Reckless Attack
+- **Feature**: Add support for Barbarian's Frenzy attack
+- **Feature**: Add support for whispering when using custom digital dice rolls
+- **Bugfix**: Fix support for Sacred Weapon (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix support for 2014 vs 2024 source book references, which broke some special features (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix Tavern Brawler 2024 not applying to all unarmed strike actions (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix Great Weapon Fighting Style damage calculation (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix incompatibility issue with AboveVTT extension
+- **Bugfix**: Fix Barbarian's Improved Brutal Strike not increasing dice count until level 17
+- **Bugfix**: *FVTT*: Fix deprecation warnings on Foundry v13 (by [@sirrio](https://github.com/sirrio))
+- **Misc**: Misc fixes and code cleanup
+
+
+
 v2.14.0 (May 3rd 2025)
 ===
 - **Feature**: Add the ability to lock/unlock some character specific options instead of resetting after use (by [@dmportella](https://github.com/dmportella))

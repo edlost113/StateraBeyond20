@@ -499,6 +499,9 @@ class Beyond20RollRenderer {
         let is_monster = character.type() == "Monster" || character.type() == "Vehicle";
         if (is_monster && whisper_monster != WhisperType.NO)
             whisper = whisper_monster;
+        if (digitalRoll.whisper) {
+            whisper = WhisperType.YES;
+        }
         if (whisper === WhisperType.QUERY) {
             whisper = await this.queryWhisper(digitalRoll.name || "Custom Roll", is_monster);
             if (whisper === null) return; // query was cancelled
@@ -606,7 +609,8 @@ class Beyond20RollRenderer {
         let is_critical = false;
         if (request.rollAttack && request["to-hit"] !== undefined) {
             const custom = custom_roll_dice == "" ? "" : (" + " + custom_roll_dice);
-            const to_hit_mod = " + " + request["to-hit"] + custom;
+            const to_hit_mod = (request["to-hit"]?.trim() ? (["+", "-"].includes(request["to-hit"].trim()[0]) ? " " : " + ") + request["to-hit"].trim() : "") + (custom?.trim() ||
+ "");
             const {rolls} = this.getToHit(request, to_hit_mod)
             to_hit.push(...rolls);
             all_rolls.push(...rolls);
@@ -964,7 +968,7 @@ class Beyond20RollRenderer {
         let custom_roll_dice = "";
         if (request.character.type == "Character" ||
             (request.character.type == "Creature" && request.character.creatureType === "Wild Shape")) {
-            custom_roll_dice = request.character.settings["custom-roll-dice"] || "";
+            custom_roll_dice = request.character.settings?.["custom-roll-dice"] || "";
         }
 
         if (request.type == "avatar") {

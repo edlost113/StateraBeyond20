@@ -574,6 +574,17 @@ const character_settings = {
         "type": "bool",
         "default": true
     },
+    "barbarian-reckless": {
+        "title": "Barbarian: Reckless Attack",
+        "description": "Attack recklessly, giving advantage on your attack rolls, but granting advantage to attacks against you",
+        "type": "bool",
+        "default": false,
+        "lock": "barbarian-reckless-lock"
+    },
+    "barbarian-reckless-lock": {
+        "type": "bool",
+        "default": false
+    },
     "bloodhunter-crimson-rite": {
         "title": "Bloodhunter: Crimson Rite",
         "description": "Add Crimson Rite damage",
@@ -742,6 +753,13 @@ const character_settings = {
     "rogue-assassinate": {
         "title": "Rogue: Assassin: Assassinate Surprise Attack (Apply to next roll only, unless locked)",
         "description": "Roll with advantage and roll critical damage dice.",
+        "type": "bool",
+        "default": false,
+        "lock": "rogue-assassinate-lock"
+    },
+    "rogue-assassinate-2024": {
+        "title": "Rogue: Assassin: Assassinate Attack (Apply to next roll only, unless locked)",
+        "description": "Roll with advantage and with extra damage.",
         "type": "bool",
         "default": false,
         "lock": "rogue-assassinate-lock"
