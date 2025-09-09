@@ -471,11 +471,6 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damages.push("1d8");
             damage_types.push("Radiant");
         }
-        if (character.hasClassFeature("Radiant Strikes") &&
-            character.getSetting("paladin-improved-divine-smite", true)) {
-            damages.push("1d8");
-            damage_types.push("Radiant");
-        }
     }
     if (character.hasClass("Druid")) {
         //Druid: Primal Strike
@@ -957,10 +952,7 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
     const properties = propertyListToDict(prop_list);
     properties["Properties"] = properties["Properties"] || "";
     //console.log("Properties are : " + String(properties));
-
-    if (nil == item_name)
-      item_name = $(".ct-item-pane .ct-sidebar__heading .ct-item-name,.ct-item-pane .ct-sidebar__heading .ddbc-item-name, .ct-item-pane .ct-sidebar__heading span[class*='styles_itemName']")[0].firstChild.textContent;
-
+    const item_name = $(".b20-item-pane .ct-sidebar__heading .ct-item-name,.b20-item-pane .ct-sidebar__heading .ddbc-item-name, .b20-item-pane .ct-sidebar__heading span[class*='styles_itemName']")[0].firstChild.textContent;
     const item_type = $(".ct-item-detail__intro").text();
     const item_tags = $(".ct-item-detail__tags-list .ct-item-detail__tag").toArray().map(elem => elem.textContent);
     const item_customizations = $(".b20-item-pane .ct-item-detail__class-customize-item .ddbc-checkbox--is-enabled .ddbc-checkbox__label").toArray().map(e => e.textContent);
@@ -2961,7 +2953,7 @@ function documentModified(mutations, observer) {
                 const paneClass = SPECIAL_PANES.initiative;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
-            }  else if (sidebar.find("span[class*='ddbc-action-name']").length > 0 || sidebar.parent().find("div[class*='ct-item-detail']").length > 0) {
+            } else if (sidebar.find("span[class*='ddbc-action-name']").length > 0) {
                 const paneClass = SPECIAL_PANES.action;
                 markPane(sidebar, paneClass);
                 handlePane(paneClass);
