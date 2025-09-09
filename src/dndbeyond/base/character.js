@@ -477,22 +477,6 @@ class Character extends CharacterBase {
             });
         }
     }
-    hasGreatWeaponFighting(version) {
-        const check2014 = version === 2014 || version === undefined;
-        const check2024 = version === 2024 || version === undefined;
-        if (!check2014 && !check2024) {
-            console.error("Invalid version for hasGreatWeaponFighting, expected 2014, 2024 or undefined, got", version);
-            return false;
-        }
-        const hasGWF2014 = this.hasClassFeature("Fighting Style: Great Weapon Fighting") ||
-                this.hasClassFeature("Additional Fighting Style: Great Weapon Fighting") ||
-                this.hasClassFeature("Fighting Initiate: Great Weapon Fighting") ||
-                this.hasFeat("Great Weapon Fighting");
-        const hasGWF2024 = this.hasClassFeature("Fighting Style 2024: Great Weapon Fighting") ||
-                this.hasClassFeature("Additional Fighting Style 2024: Great Weapon Fighting") ||
-                this.hasFeat("Great Weapon Fighting 2024");
-        return (check2014 && hasGWF2014) || (check2024 && hasGWF2024);
-    }
     hasClassFeature(name, substring=false) {
         if (substring) return this._class_features.some(f => f.includes(name));
         else return this._class_features.includes(name);
