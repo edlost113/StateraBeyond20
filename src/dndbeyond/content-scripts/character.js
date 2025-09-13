@@ -341,7 +341,6 @@ function rollInitiative() {
         // Render initiative as a string that begins with '+' || '-';
         initiative = initiative >= 0 ? '+' + initiative.toFixed(2) : initiative.toFixed(2);
     }
-
     if (character.hasClassFeature("Assassinate 2024") &&
         character.getSetting("rogue-assassinate-2024", false)) {
         advantage = true;
@@ -351,11 +350,11 @@ function rollInitiative() {
     }
 
     const roll_properties = { "initiative": initiative }
-
     if (advantage)
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-    return sendRollWithCharacter("initiative", initiativeRoll, roll_properties);
+    return sendRollWithCharacter("initiative", "1d20" + initiative, roll_properties);
 }
+
 
 
 function rollHitDie(multiclass, index) {
