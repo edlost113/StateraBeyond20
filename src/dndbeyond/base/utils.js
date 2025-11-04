@@ -372,6 +372,24 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Radiant", "Necrotic"]);
             if (choice === null) return null; // Query was cancelled;
         }
+        
+        if (character.hasClassFeature("Additional Fighting Style 2024: Opportunist") ||
+            character.hasFeat("Opportunist 2024") ||
+            character.hasFeat("Opportunist") ) {
+            const choices = {
+            [WhisperType.NO]: "Normal Roll",
+            [WhisperType.YES]: "Reaction Roll"
+        }
+            const choice = [await dndbeyondDiceRoller.queryGeneric("Reaction?", "Opportunist Attack", choices)];
+            const reactionAttack = parseInt(choice);
+            if (reactionAttack) {
+                to_hit += `+2`;
+                //update to hit on reaction if opportunist
+                roll_properties["to-hit"] = to_hit;
+                damages.push("2");
+                damage_types.push("Opportunist Reaction Attack");
+            }
+        }
 
         await applyRogueSneakAttack(character, name, properties, damages,
                                    damage_types, roll_properties,
