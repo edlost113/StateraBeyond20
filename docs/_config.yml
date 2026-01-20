@@ -16,10 +16,9 @@
 title: Beyond20
 description: Integrating D&D Beyond seamlessly with Virtual Tabletops
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "https://beyond20.here-for-more.info" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: KaKaRoToKS
-github_username:  kakaroto
-google_analytics: UA-10205391-2
+url: "https://github.com/edlost113/StateraBeyond20" # the base hostname & protocol for your site, e.g. http://example.com
+twitter_username: Edlost113
+github_username:  Edlost113
 logo: /images/icon128.png
 
 # Build settings
