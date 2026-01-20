@@ -637,13 +637,30 @@ function handleSpecialGeneralAttacks(damages=[], damage_types=[], properties, se
     }
 
     if (character.hasClass("Cleric")) {
-        // Cleric: Blessed Strikes
-        if ((((item_name || action_name) && to_hit != null) || (spell_name && spell_level.includes("Cantrip"))) &&
-            character.hasClassFeature("Blessed Strikes") &&
+        // Cleric: Blessed Strikes 2024
+        const action = item_name || action_name;
+        if ((action && to_hit != null) && !["Unarmed Strike"].includes(action) &&
+            character.hasClassFeature("Blessed Strikes 2024") &&
+            character.hasClassFeature("Blessed Strikes 2024: Divine Strike") &&
             character.getSetting("cleric-blessed-strikes", false)) {
+            if(character.hasClassFeature("Improved Blessed Strikes 2024")) damages.push("2d8");
+            else damages.push("1d8");
+            damage_types.push("Blessed Strikes");
+
+            const isLocked = character.getSetting("cleric-blessed-strikes-lock", false);
+            if(!isLocked) settings_to_change["cleric-blessed-strikes"] = false;
+        }
+
+        // Cleric: Blessed Strikes 2014 tasha optional rule
+        if (((action && to_hit != null) || (spell_name && spell_level.includes("Cantrip"))) &&
+            character.hasClassFeature("Blessed Strikes") &&
+            character.getSetting("cleric-blessed-strikes-tasha", false)) {
             if(character.hasClassFeature("Improved Blessed Strikes")) damages.push("2d8");
             else damages.push("1d8");
             damage_types.push("Blessed Strikes");
+
+            const isLocked = character.getSetting("cleric-blessed-strikes-tasha-lock", false);
+            if(!isLocked) settings_to_change["cleric-blessed-strikes-tasha"] = false;
         }
     }
 
@@ -789,12 +806,15 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
     }
     
     if (character.hasClass("Cleric")) {
-        // Cleric: Divine Strike
+        // Cleric: Divine Strike 2014
         if (character.hasClassFeature("Divine Strike") &&
             character.getSetting("cleric-divine-strike", true)) {
             const cleric_level = character.getClassLevel("Cleric");
             damages.push(cleric_level < 14 ? "1d8" : "2d8");
             damage_types.push("Divine Strike");
+
+            const isLocked = character.getSetting("cleric-divine-strike-lock", false);
+            if(!isLocked) settings_to_change["cleric-divine-strike"] = false;
         }
     }
 
@@ -2262,7 +2282,7 @@ function injectRollButton(paneClass) {
         const properties = propertyListToDict($(".b20-item-pane .ct-item-detail [role=list] > div"));
         if (Object.keys(properties).includes("Damage")) {
             addRollButtonEx(paneClass, ".ct-sidebar__heading", { small: true });
-            addDisplayButtonEx(paneClass, ".ct-beyond20-roll");
+            addDisplayButtonEx(paneClass, ".ct-sidebar__header .ct-beyond20-roll");
             const spell_damage_groups = $(".b20-item-pane .ct-item-detail__spell-damage-group");
             for (const group of spell_damage_groups.toArray()) {
                 const header = $(group).find(".ct-item-detail__spell-damage-group-header");
@@ -2275,7 +2295,7 @@ function injectRollButton(paneClass) {
             const is_instrument =  item_tags.includes("Instrument");
             if (is_tool || is_instrument) {
                 addRollButtonEx(paneClass, ".ct-sidebar__heading", { small: true, text: `Use ${is_tool? "Tool" : "Instrument"}` });
-                addDisplayButtonEx(paneClass, ".ct-beyond20-roll");
+                addDisplayButtonEx(paneClass, ".ct-sidebar__header .ct-beyond20-roll");
             } else {
                 addDisplayButtonEx(paneClass, ".ct-sidebar__heading", { append: false, small: false });
             }
@@ -2303,7 +2323,7 @@ function injectRollButton(paneClass) {
             action_name.includes("Blood Curse of the Eyeless") ||
             (properties["Damage"] !== undefined || to_hit !== null || properties["Attack/Save"] !== undefined)) {
             addRollButtonEx(paneClass, ".ct-sidebar__heading", { small: true });
-            addDisplayButtonEx(paneClass, ".ct-beyond20-roll");
+            addDisplayButtonEx(paneClass, ".ct-sidebar__header .ct-beyond20-roll");
         } else {
             addRollButtonEx(paneClass, ".ct-sidebar__heading");
         }
@@ -2330,7 +2350,7 @@ function injectRollButton(paneClass) {
 
         if (damages.length > 0 || healings.length > 0 || to_hit !== null || properties["Attack/Save"] !== undefined) {
             addRollButtonEx(paneClass, ".ct-sidebar__heading", { text: "Cast on VTT", small: true });
-            addDisplayButtonEx(paneClass, ".ct-beyond20-roll");
+            addDisplayButtonEx(paneClass, ".ct-sidebar__header .ct-beyond20-roll");
         } else {
             //addRollButtonEx(paneClass, ".ct-sidebar__heading", text="Cast on VTT", image=false);
             addDisplayButtonEx(paneClass, ".ct-sidebar__heading", { append: false, small: false });

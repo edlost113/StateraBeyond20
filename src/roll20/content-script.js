@@ -5,14 +5,18 @@ const ROLL20_ADVANTAGE_QUERY = "{{query=1}} ?{Advantage?|Normal Roll,&#123&#123n
 const ROLL20_INITIATIVE_ADVANTAGE_QUERY = "?{Roll Initiative with advantage?|Normal Roll,1d20|Advantage,2d20kh1|Disadvantage,2d20kl1|Super Advantage,3d20kh1|Super Disadvantage,3d20kl1}"
 const ROLL20_ADD_GENERIC_DAMAGE_DMG_QUERY = "?{Add %dmgType% damage?|No,0|Yes,%dmg%}"
 
-
-const chat = document.getElementById("textchat-input");
-const txt = chat.getElementsByTagName("textarea")[0];
-const btn = chat.getElementsByTagName("button")[0];
-const speakingas = document.getElementById("speakingas");
 var settings = getDefaultSettings();
 
 function postChatMessage(message, character = null) {
+    const chat = document.getElementById("textchat-input"),
+        txt = chat?.querySelector("textarea"),
+        btn = chat?.querySelector("button"),
+        speakingas = document.getElementById("speakingas");
+    if (!chat || !txt || !btn || !speakingas) 
+    {
+        console.log("Error: Unabled to post message to chat.")
+        return;
+    }
     let set_speakingas = true;
     const old_as = speakingas.value;
     if (character) {
@@ -46,7 +50,7 @@ function escapeRoll20Macro(text) {
 
 function genRoll(dice, modifiers = {}) {
     dice = dice.replace(/ro<=([0-9]+)/, "ro<$1");
-    dice = dice.replace(/(^|\s)+([^\s]+)min([0-9]+)([^\s]*)/g, "$1{$2$4, 0d0 + $3}kh1");
+    dice = dice.replace(/(^|\s)+([^\s]+)min(\d+)([^\s+\-]*?)(?=[+\-\s]|$)/g, "$1{$2$4, 0d0 + $3}kh1");
     let roll = "[[" + dice;
     for (let m in modifiers) {
         let mod = modifiers[m].trim();
@@ -606,6 +610,9 @@ function displayExtraInfo(request) {
     if (Array.isArray(request["effects"]) && request["effects"].length > 0) {
         extra += "Effects: " + request["effects"].join(", ") + "\n";
     }
+    if (request["cunning-strike-effects"]) {
+        extra += "Cunning Strike: " + request["cunning-strike-effects"] + "\n";
+    }
     if (extra != "") {
         return "\n" + template(request, "desc", { desc: extra });
     }
@@ -900,6 +907,7 @@ function injectSettingsButton() {
     if (img)
         img.remove();
     img = E.img({ id: "beyond20-settings", src: icon, style: "margin-left: 5px;" });
+    const btn = document.querySelector("#textchat-input button");
     btn.after(img);
     img.onclick = alertQuickSettings;
 }
@@ -939,6 +947,7 @@ function handleMessage(request, sender, sendResponse) {
             let em_command = `/emas "${character_name}" `;
             if (!is_gm) {
                 // Add character name only if we can't speak as them
+                const speakingas = document.getElementById("speakingas");
                 const availableAs = Array.from(speakingas.children).map(c => c.text.toLowerCase())
                 if (availableAs.includes(character_name.toLowerCase()))
                     em_command = "/em ";
@@ -955,9 +964,9 @@ function handleMessage(request, sender, sendResponse) {
         }
     } else if (request.action == "roll") {
         const isOGL = $("#isOGL").val() === "1";
-        if (settings["roll20-template"] === "default" ||
+        if (request.type !== "avatar" && (settings["roll20-template"] === "default" ||
             settings["roll20-template"] === "beyond20" ||
-            !isOGL) {
+            !isOGL)) {
             return roll_renderer.handleRollRequest(request);
         }
         if (request.type == "avatar") {

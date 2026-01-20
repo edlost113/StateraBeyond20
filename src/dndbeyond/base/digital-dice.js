@@ -190,6 +190,75 @@ class DigitalDiceManager {
             // so the roll buttons doesnt exist yet. We need to retry to roll the button a few times until it is done.
             DigitalDiceManager._clickRollButtonWithRetry();
         }
+        return rolled;
+    }
+    // the menu appears with a small delay after clicking the button, so we retry for 500ms until the DOM updates before
+    // being able to click the roll button.
+    // I assume it actually happens on the next update, so a `setTimeout(0)` or `afterTick` equivalent would probably work as well
+    // but this is more robust, just in case the assumption is wrong.
+    static async _clickRollButtonWithRetry(retries = 50, delay = 10) {
+        return new Promise((resolve) => {
+            const tryClick = (remaining, _delay) => {
+                const $rollButton = $(".dice-toolbar.rollable .dice-toolbar__target button:not(.dice-toolbar__target-menu-button)").first();
+
+                if ($rollButton.length) {
+                    $rollButton.click();
+                    return resolve(true);
+                }
+
+                if (remaining > 0) {
+                    setTimeout(() => tryClick(remaining - 1, _delay), _delay);
+                } else {
+                    console.warn("DigitalDiceManager: roll button not found after retries");
+                    return resolve(false);
+                }
+            };
+
+            tryClick(retries, delay);
+        });
+    }
+    static async _selectWhisperTargetWithRetry(retries = 50, delay = 10) {
+        return new Promise((resolve) => {
+            const menuButton = document.querySelector(".dice-toolbar.rollable button.dice-toolbar__target-menu-button");
+            if (!menuButton) {
+                console.warn("DigitalDiceManager: target menu button not found");
+                return resolve(false);
+            }
+
+            // Open the target selection menu
+            menuButton.click();
+
+            const trySelect = (remaining, _delay) => {
+                const $options = $("#options-menu ul ul > div");
+
+                if ($options.length > 0) {
+                    const texts = $options.toArray().map(d => d.textContent.trim());
+                    const toDM   = texts.findIndex(t => t === "Dungeon Master");
+                    const toSelf = texts.findIndex(t => t === "Self");
+
+                    if (toDM >= 0) {
+                        $options.eq(toDM).click();
+                        return resolve(true);
+                    } else if (toSelf >= 0) {
+                        $options.eq(toSelf).click();
+                        return resolve(true);
+                    }
+
+                    console.warn("DigitalDiceManager: no 'Dungeon Master' or 'Self' option found");
+                    return resolve(false);
+                }
+
+                if (remaining > 0) {
+                    // Wait a bit, then try again
+                    setTimeout(() => trySelect(remaining - 1, _delay), _delay);
+                } else {
+                    console.warn("DigitalDiceManager: options menu did not appear");
+                    resolve(false);
+                }
+            };
+
+            trySelect(retries, delay);
+        });
     }
     static _clickRollButtonWithRetry(retries = 5, delay = 50) {
         const tryClick = (remaining, _delay) => {

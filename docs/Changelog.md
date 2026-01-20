@@ -1,3 +1,22 @@
+v2.17.1 (January 16th 2025)
+===
+- **Feature**: Add support for Blessed Strikes 2024 and differenciate with the Tasha's version of Blessed Strikes (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *Chrome*: Fix browser detection on latest version of Chrome (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix the "Display to VTT" button on spells which include a roll table (like Confusion)
+
+v2.17.0 (December 13th 2025)
+===
+- **Feature**: Add support for 2024 version of Remarkable Athlete
+- **Feature**: Add support for Druid's Circle of Mutation's Predatory Strikes
+- **Bugfix**: Fix issue rolling on DDB with Digital Dice due to asynchronous page updates
+- **Bugfix**: Fix differentiating between 2014 and 2024 version of Remarkable Athlete
+- **Bugfix**: Fix Great Weapon Fighting damage being incorrectly calculated in some situations
+- **Bugfix**: Fix custom damages being added twice when rolling a Wild Shape Extra
+- **Bugfix**: *FVTT*: Fix "Unknown Combatant" being displayed in the combat tracker
+- **Bugfix**: *Roll20*: Make it more resilient to page updates by dynamically looking up the chat window on every message
+- **Bugfix**: *Roll20*: Fix displaying of avatars if not using OGL sheet
+- **Bugfix**: *Roll20*: Fix missing Cunning Strike description from rolls to roll20
+
 v2.16.2 (September 4th 2025)
 ===
 - **Bugfix**: Fix rolling items after DDB site update (by [@dmportella](https://github.com/dmportella))
