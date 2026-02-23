@@ -272,6 +272,27 @@ async function buildAttackRoll(character, attack_source, name, description, prop
     if (damages.length > 0) {
         roll_properties["damages"] = damages;
         roll_properties["damage-types"] = damage_types;
+        if ((character._settings) && (character._settings["Hex"])) {
+            damages.push("1d6");
+            damage_types.push("Hex (Necrotic)");
+        }
+        if ((character._settings) && (character._settings["Hunters-Mark"])) {
+            damages.push("1d6");
+            damage_types.push("Hunters Mark (Force)");
+        }
+        
+        if ((character._settings) && (character._settings["Frigid-Explorer"])) {
+            const lvl = character.getClassLevel("Ranger");
+            if (lvl > 10)
+                damages.push("1d6");
+            else
+                damages.push("1d4");
+            damage_types.push("Polar Strikes (Cold)");
+
+            const isLocked = character.getSetting("frigidexplorer-lock", false);
+            if(!isLocked) settings_to_change["Frigid-Explorer"] = false;
+        }
+
 
         if (character.hasItemAttuned("Spine of Mol Krad", true)) {
             if ((character._settings) && (character._settings["Chrono-Fungal-Surge"])) {

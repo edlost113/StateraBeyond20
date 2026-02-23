@@ -887,6 +887,10 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "frigidexplorer-lock": {
+        "type": "bool",
+        "default": false
+    },
     "brutal-critical": {
         "title": "Brutal Critical/Savage Attacks: Roll extra die",
         "description": "Roll extra damage die on crit for Brutal Critical and Savage Attacks features",
@@ -947,6 +951,18 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "Hex": {
+        "title": "Hex",
+        "description": "Under the effect of the Hex spell",
+        "type": "bool",
+        "default": false
+    },
+    "Hunters-Mark": {
+        "title": "Hunters Mark",
+        "description": "Under the effect of the Hunters Mark spell",
+        "type": "bool",
+        "default": false
+    },
     "Chrono-Fungal-Surge": {
         "title": "Chrono-Fungal Surge",
         "description": "As a bonus action, you may flood your magic with unstable temporal energy. For 1 minute: Your spells deal +1d6 necrotic damage. At the end of your turn, roll a d6. On a 1, you suffer 1 level of exhaustion.",
@@ -958,6 +974,13 @@ const character_settings = {
         "description": "When you drink this potion, you become Huge for 24 hours if you are Medium or smaller, otherwise the potion does nothing. For that duration, your Strength becomes 25, if it isn’t already higher, and your hit point maximum is doubled (your current hit points are doubled when you drink the potion). In addition, the reach of your melee attacks increases by 5 feet.\nEverything you are carrying and wearing also increases in size for the duration. When rolling damage for weapons enlarged in this manner, roll three times the normal number of dice",
         "type": "bool",
         "default": false
+    },
+    "Frigid-Explorer": {
+        "title": "Frigid Explorer",
+        "description": "When you hit a creature with an attack roll using a weapon, you can deal an extra 1d4 Cold damage to the target, which can take this extra damage only once per turn. When you reach Ranger level 11, this extra damage increases to 1d6.",
+        "type": "bool",
+        "default": false,
+        "lock": "frigidexplorer-lock"
     },
 }
 

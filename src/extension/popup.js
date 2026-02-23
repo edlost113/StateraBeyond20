@@ -386,6 +386,16 @@ function populateCharacter(response) {
             e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Frigid Explorer")) {
+            e = createHTMLOption("Frigid-Explorer", false, character_settings);
+            options.append(e);
+        }
+
+        e = createHTMLOption("Hex", false, character_settings);
+        options.append(e);
+
+        e = createHTMLOption("Hunters-Mark", false, character_settings);
+        options.append(e);
 
         e = createHTMLOption("Potion-Giant-Size", false, character_settings);
         options.append(e);
