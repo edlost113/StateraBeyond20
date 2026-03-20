@@ -107,9 +107,14 @@ async function rollSkillCheck(paneClass) {
     roll_properties.d20 = "1d20";
     // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
     if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency)) {
-        roll_properties.d20 = "1d20min10";
         addEffect(roll_properties, "Reliable Talent");
     }
+    if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+        addEffect(roll_properties, "Reliable Talent");
+
+    if (ability == "CHA" && character.getSetting("Glibness", false))
+        roll_properties.d20 = "1d20min15";
+  
     // Set Silver Tongue if Deception or Persuasion
     if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion")) {
         roll_properties.d20 = "1d20min10";
@@ -129,6 +134,16 @@ async function rollSkillCheck(paneClass) {
         } else if (!min10) {
             roll_properties.d20 = `1d20min${min}`
         }
+    }
+
+    //True Madness for wizards
+    if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
+    }
+
+    //True Madness for clerics
+    if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
     }
 
     // Mark of Detection Half-Elf - Deductive Intuition
@@ -319,6 +334,17 @@ function applyAbilityOrSavingThrowEffects({ rollType, ability_name, ability, mod
         addEffect(roll_properties, "Durable Magic");
     }
 
+    if ((rollType == "ability") && (ability == "INT") && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)")))){
+        roll_properties.d20 = "1d20min10";
+      addEffect(roll_properties, "Boon of the Arcane Savant(wiz)");
+    }
+    // Fey Wanderer Ranger - Otherworldly Glamour
+    if (rollType == "ability" && character.hasClassFeature("Otherworldly Glamour") && ability == "CHA") {
+        modifier = parseInt(modifier) + Math.max(character.getAbility("WIS").mod,1);
+        modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+        roll_properties["modifier"] = modifier;
+    }
+
     // Sorcerer: Clockwork Soul - Trance of Order
     if (
         character.hasClassFeature("Trance of Order") &&
@@ -461,6 +487,7 @@ function rollInitiative() {
 }
 
 
+
 function rollHitDie(multiclass, index) {
     //console.log("Rolling hit die index " + index);
     const hitdie = $(".ct-reset-pane__hitdie").eq(index);
@@ -573,6 +600,18 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             character.getSetting("paladin-radiant-strikes", true))) {
             damages.push("1d8");
             damage_types.push("Radiant");
+        }
+    }
+    if (character.hasClass("Druid")) {
+        //Druid: Primal Strike
+        if (character.hasClassFeature("Improved Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("2d8");
+            damage_types.push("Primal Strike");
+        } else if (character.hasClassFeature("Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("1d8");
+            damage_types.push("Primal Strike");
         }
     }
 
@@ -979,22 +1018,66 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
         }
     }
     
+    if (character.hasItemAttuned("Armor of the White Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+    }
+    
+    if (character.hasItemAttuned("Armor of the White and Black Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+        damages.push("3d6");
+        damage_types.push("Radiant");
+        damages.push("6d6");
+        damage_types.push("Healing");        
+    }
+
     if (character.hasClass("Rogue")) {
         // Rogue: Sneak Attack
         const name = action_name || item_name || "";
         if(character.hasClassFeature("Sneak Attack") && character.getSetting("rogue-sneak-attack", false) &&
             (properties["Attack Type"] == "Ranged" ||
             (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
+
             name.includes("Psychic Blade") ||
             name.includes("Shadow Blade"))) {
             const sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
+            
             let sneak_attack = `${sneakDieCount}d6`;
+            if (character.hasFeat("Boon of the Blade")) { 
+                sneak_attack = "10d10";
+            }
+
             damages.push(sneak_attack);
             damage_types.push("Sneak Attack");
             effects.push("Sneak Attack");
 
             const isLocked = character.getSetting("rogue-sneak-attack-lock", false);
             if(!isLocked) settings_to_change["rogue-sneak-attack"] = false;
+        }
+    }
+
+    if (character.hasFeat("Boon of Celestial") && ( (properties["Attack Type"] == "Ranged") || 
+                                                    (properties["Attack Type"] == "Melee")  || 
+                                                    (properties["Attack Type"] == "Unarmed Strike") ||
+                                                    (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Celestial boon (Radiant)");
+    }
+
+    if (character.hasFeat("Boon of Fiend") && ( (properties["Attack Type"] == "Ranged") || 
+                                                (properties["Attack Type"] == "Melee")  || 
+                                                (properties["Attack Type"] == "Unarmed Strike") ||
+                                                (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Fiend boon (Radiant)");
+    }
+
+    if (character.hasClass("Ranger")) {
+        if ((character.hasFeat("Boon of the Arcane Archer")) && (properties["Attack Type"] == "Ranged")) { 
+            let extraDamage = "1d6";
+            damages.push(extraDamage);
+            damage_types.push("Boon of the Arcane Archer");
         }
     }
 
@@ -1068,8 +1151,19 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
                 if(damages.length == 0) {
                     if (versatile_damage != "") {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = versatile_damage.split("d");
+                            const numberBeforeD = 3 * parseInt(versatile_damage.split('d')[0], 10);
+                            versatile_damage = numberBeforeD + "d" + parts[1];
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         versatile_damage = applyGWFIfRequired(item_name, properties, versatile_damage);
                     } else {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = damage.split("d");
+                            const numberBeforeD = 3 * parseInt(damage.split('d')[0], 10);
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         damage = applyGWFIfRequired(item_name, properties, damage);
                     }
                 }
@@ -1342,6 +1436,13 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
                 if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency))
                     roll_properties.d20 = "1d20min10";
+
+                if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+                    roll_properties.d20 = "1d20min10";
+
+                if (ability == "CHA" && character.getSetting("Glibness", false))
+                    roll_properties.d20 = "1d20min15";
+
                 // Sorcerer: Clockwork Soul - Trance of Order
                 if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
                     roll_properties.d20 = "1d20min10";
@@ -1360,6 +1461,14 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Mark of Hospitality Halfing - Ever Hospitable
                 if (character.hasRacialTrait("Ever Hospitable") && is_tool && (item_name == "Brewer's Supplies" || item_name == "Cook's Utensils"))
                     roll_properties.modifier += "+1d4";
+                //True Madness for wizards
+                if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
+                //True Madness for wizards
+                if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
                 // Mark of Making Human - Artisan's Intuition
                 if (character.hasRacialTrait("Artisan’s Intuition") && is_tool)
                     roll_properties.modifier += "+1d4";
@@ -1386,8 +1495,13 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
     //console.log("Properties are : " + String(properties));
     const action_name = $(".ct-sidebar__heading").text();
     const action_parent = $(".ct-sidebar__header-parent").text();
-    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description']`);
+    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description'], .${paneClass} .ct-item-detail__description`);
+
     let to_hit = properties["To Hit"] !== undefined && properties["To Hit"] !== "--" ? properties["To Hit"] : null;
+    
+    if (!to_hit) {
+        to_hit = findToHit(action_name, ".ct-combat-attack--item,.ddbc-combat-attack--item", ".ct-item-name,.ddbc-item-name,span[class*='styles_itemName']", ".ct-combat-attack__tohit,.ddbc-combat-attack__tohit");
+    }
 
     if (action_name == "Superiority Dice" || action_parent == "Maneuvers") {
         const fighter_level = character.getClassLevel("Fighter");
@@ -1904,6 +2018,9 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
             critical_limit = 19;
         if (spell_full_name === "Blade of Disaster")
             critical_limit = 18;
+
+        properties["cast-at"] = castas;
+
         const roll_properties = await buildAttackRoll(character,
             "spell",
             spell_name,

@@ -40,12 +40,7 @@ function createOptionList() {
             )
         )
     );
-    const img = $("#donate").find("img");
-    img.attr({
-        "src": img.attr("src").replace("donate.png", "donate32.png"),
-        "width": 32,
-        "height": 32
-    });
+    
     $("#openOptions").on('click', (ev) => {
         chrome.runtime.openOptionsPage();
     });
@@ -238,8 +233,17 @@ function populateCharacter(response) {
             e = createHTMLOption("paladin-improved-divine-smite", false, character_settings);
             options.append(e);
         }
+
         if (response["class-features"].includes("Radiant Strikes")) {
             e = createHTMLOption("paladin-radiant-strikes", false, character_settings);
+            options.append(e);
+        }
+        if (response["class-features"].includes("Elemental Fury")) {
+            e = createHTMLOption("druid-primal-strike", false, character_settings);
+            options.append(e);
+        }
+        if (response["class-features"].includes("Elemental Fury")) {
+            e = createHTMLOption("druid-potent-spellcasting", false, character_settings);
             options.append(e);
         }
         if (response["class-features"].includes("Hexblade’s Curse")) {
@@ -375,6 +379,31 @@ function populateCharacter(response) {
             e = createHTMLOption("druid-circle-of-mutation-circle-forms", false, character_settings);
             options.append(e);
         }
+        if (Object.keys(response.classes).includes("Bard") || Object.keys(response.classes).includes("Warlock")) {
+            e = createHTMLOption("Glibness", false, character_settings);
+            options.append(e);
+        }
+
+        e = createHTMLOption("Gift-Alacrity", false, character_settings);
+        options.append(e);
+
+        if (Object.keys(response.classes).includes("Wizard")) {
+            e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
+            options.append(e);
+        }
+        if (response["class-features"].includes("Frigid Explorer")) {
+            e = createHTMLOption("Frigid-Explorer", false, character_settings);
+            options.append(e);
+        }
+
+        e = createHTMLOption("Hex", false, character_settings);
+        options.append(e);
+
+        e = createHTMLOption("Hunters-Mark", false, character_settings);
+        options.append(e);
+
+        e = createHTMLOption("Potion-Giant-Size", false, character_settings);
+        options.append(e);
     }
     $('.beyond20-option-input').off('change', save_settings);
     $('.beyond20-option-input').change(save_settings);
