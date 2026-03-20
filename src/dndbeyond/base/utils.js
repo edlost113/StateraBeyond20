@@ -40,26 +40,6 @@ function abbreviationToAbility(abbr) {
     return abbr;
 }
 
-function normalizeAbilityName(value = "") {
-    const token = value.trim().split(/\s+/)[0].toLowerCase();
-
-    const map = {
-        strength: "STR",
-        dexterity: "DEX",
-        constitution: "CON",
-        intelligence: "INT",
-        wisdom: "WIS",
-        charisma: "CHA",
-        str: "STR",
-        dex: "DEX",
-        con: "CON",
-        int: "INT",
-        wis: "WIS",
-        cha: "CHA"
-    };
-
-    return map[token];
-}
 
 function propertyListToDict(propList) {
     const properties = {}
@@ -703,6 +683,7 @@ async function sendRoll(character, rollType, fallback, args) {
     } else {
         console.log("Sending message: ", req);
         chrome.runtime.sendMessage(req, (resp) => beyond20SendMessageFailure(character, resp));
+        sendRollRequestToDOM(req);
     }
 }
 
@@ -1177,21 +1158,4 @@ function getQuickRollTooltip() {
         quickRollTooltipEl = beyond20_tooltip;
     }
     return beyond20_tooltip;
-}
-
-// Transform lowercase, remove trailing asterisk and spaces
-function normalizeActionName(action_name) {
-    return action_name.toLocaleLowerCase().trim().replace(/[\s*]+$/, "");
-}
-
-// Strict equality check
-function includesNormalized(list, value) {
-    const normalizedValue = normalizeActionName(value);
-    return list.includes(normalizedValue);
-}
-
-// Substring check
-function containsNormalized(list, value) {
-    const normalizedValue = normalizeActionName(value);
-    return list.some(item => item.includes(normalizedValue));
 }
