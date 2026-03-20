@@ -4,39 +4,36 @@ class DDBMessageBroker {
         this._mb = null;
         this._messageQueue = [];
         this._blockMessages = [];
-        this._registered = false;
         this._hooks = {};
         this._characterId = (window.location.pathname.match(/\/characters\/([0-9]+)/) || [])[1];
         this.saveMessages = false;
         this._debug = false;
     }
+    uuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
     register() {
-        if (this._registered) return;
-
-        const key = Symbol.for('@dndbeyond/message-broker-lib');
-        if (key) this._mb = window[key];
+        if (this._mb) return;
+        const key = Symbol.for('@dndbeyond/message-broker-lib')
+        if (key)
+            this._mb = window[key];
         if (!this._mb) return;
-
-        this._onMessageBound = this._onMessageBound || this._onMessage.bind(this);
-        this._onDispatchBound = this._onDispatchBound || this._onDispatchMessage.bind(this);
-
-        this._mb.subscribe(this._onMessageBound);
+        this._mb.subscribe(this._onMessage.bind(this));
         this._mbDispatch = this._mb.dispatch.bind(this._mb);
-        this._mb.dispatch = this._onDispatchBound;
-        this._registered = true;
+        this._mb.dispatch = this._onDispatchMessage.bind(this);
     }
     unregister() {
-        if (!this._registered || !this._mb) return;
-
+        if (!this._mb) return;
         if (this._mbDispatch) {
             this._mb.dispatch = this._mbDispatch;
             this._mbDispatch = null;
         }
-
-        this._registered = false;
+        // We can't unsubscribe from the _onMessage
         this._mb = null;
     }
-
     /**
      * Hook on events from the message broker of a particular type
      */
@@ -118,7 +115,7 @@ class DDBMessageBroker {
     postMessage(data) {
         this.register();
         if (!this._mb) return;
-        data.id = data.id || uuidv4(),
+        data.id = data.id || this.uuid(),
         data.dateTime = String(data.dateTime || Date.now());
         data.source = data.source || "Beyond20";
         data.persist = data.persist || false;

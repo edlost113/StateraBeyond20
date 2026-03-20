@@ -307,8 +307,7 @@ class Character extends CharacterBase {
                 feat_name.toLowerCase() === "assassinate" ||
                 feat_name.toLowerCase() === "remarkable athlete" ||
                 feat_name.toLowerCase() === "blessed strikes" ||
-                feat_name.toLowerCase() === "improved blessed strikes" ||
-                feat_name.toLowerCase() === "healer"
+                feat_name.toLowerCase() === "improved blessed strikes"
             ) && ( 
                 feat_reference.toLowerCase().includes("2024")) ||
                 feat_reference.toLowerCase().includes("free-rules")
@@ -626,9 +625,5 @@ class Character extends CharacterBase {
             "url": this._url,
             "version": this._version
         }
-    }
-
-    getVersion() {
-        return this._version;
     }
 }
