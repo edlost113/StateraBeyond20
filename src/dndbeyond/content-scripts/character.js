@@ -61,7 +61,7 @@ async function rollSkillCheck(paneClass) {
             if (modifier != "--" && modifier != "+0")
                 mod += parseInt(modifier);
             modifier = mod >= 0 ? `+${mod}` : `${mod}`;
-        } else { return; } // cancel roll
+        }
     }
     //console.log("Skill " + skill_name + " (" + ability + ") : " + modifier);
     const roll_properties = {
@@ -107,9 +107,14 @@ async function rollSkillCheck(paneClass) {
     roll_properties.d20 = "1d20";
     // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
     if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency)) {
-        roll_properties.d20 = "1d20min10";
         addEffect(roll_properties, "Reliable Talent");
     }
+    if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+        addEffect(roll_properties, "Reliable Talent");
+
+    if (ability == "CHA" && character.getSetting("Glibness", false))
+        roll_properties.d20 = "1d20min15";
+  
     // Set Silver Tongue if Deception or Persuasion
     if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion")) {
         roll_properties.d20 = "1d20min10";
@@ -129,6 +134,16 @@ async function rollSkillCheck(paneClass) {
         } else if (!min10) {
             roll_properties.d20 = `1d20min${min}`
         }
+    }
+
+    //True Madness for wizards
+    if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
+    }
+
+    //True Madness for clerics
+    if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+        roll_properties.modifier += "-"+(character._level/2);
     }
 
     // Mark of Detection Half-Elf - Deductive Intuition
@@ -199,216 +214,101 @@ async function rollSkillCheck(paneClass) {
     return sendRollWithCharacter("skill", "1d20" + modifier, roll_properties);
 }
 
-function applyAbilityOrSavingThrowEffects({ rollType, ability_name, ability, modifier, proficiency }) {
-    let mod = parseInt(modifier);
-    const roll_properties = {
-        name: ability_name,
-        ability: ability,
-        modifier: modifier
-    };
+function rollAbilityOrSavingThrow(paneClass, rollType) {
+    const ability_string = $("." + paneClass + " .ct-sidebar__heading").text();
+    const ability_name = ability_string.split(" ")[0];
+    const ability = ability_abbreviations[ability_name];
+    let modifier = $(`.${paneClass}__modifier .ct-signed-number,.${paneClass}__modifier .ddbc-signed-number, .${paneClass} span[class*='styles_modifier'] span[class*='styles_numberDisplay']`).text();
 
-    if (rollType === "saving-throw") {
-        roll_properties.proficiency = proficiency;
-    }
-
-    if (!ability) {
-        console.warn("Beyond20: could not resolve ability", {
-            rollType,
-            ability_name,
-            ability,
-            modifier,
-            proficiency
-        });
-        return;
-    }
-
-    if (rollType === "ability") {
-        // Remarkable Athlete and Jack of All Trades don't stack.
-        // Give priority to Remarkable Athlete because it rounds up.
-        if (
-            character.hasClassFeature("Remarkable Athlete") &&
-            character.getSetting("champion-remarkable-athlete", false) &&
-            ["STR", "DEX", "CON"].includes(ability)
-        ) {
-            mod += Math.ceil(character._proficiency / 2);
-            addEffect(roll_properties, "Remarkable Athlete");
-        } else if (
-            character.hasClassFeature("Jack of All Trades") &&
-            character.getSetting("bard-joat", false)
-        ) {
-            mod += Math.floor(character._proficiency / 2);
-            addEffect(roll_properties, "Jack of All Trades");
+    if (rollType == "ability") {
+        // Remarkable Athelete and Jack of All Trades don't stack, we give priority to RA instead of JoaT because
+        // it's rounded up instead of rounded down.
+        if (character.hasClassFeature("Remarkable Athlete") && character.getSetting("champion-remarkable-athlete", false) &&
+            ["STR","DEX", "CON"].includes(ability)) {
+            const remarkable_athlete_mod = Math.ceil(character._proficiency / 2);
+            modifier = parseInt(modifier) + remarkable_athlete_mod;
+            modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+        } else if (character.hasClassFeature("Jack of All Trades") && character.getSetting("bard-joat", false)) {
+            const JoaT = Math.floor(character._proficiency / 2);
+            modifier = parseInt(modifier) + JoaT;
+            modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
         }
-
         if (character.getSetting("custom-ability-modifier", "")) {
             const custom = parseInt(character.getSetting("custom-ability-modifier", "0")) || 0;
-            if (custom !== 0) {
-                mod += custom;
+            if (custom != 0)  {
+                modifier = parseInt(modifier) + custom;
+                modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
             }
         }
-
-        // Fey Wanderer Ranger - Otherworldly Glamour
-        if (
-            character.hasClassFeature("Otherworldly Glamour") &&
-            ability === "CHA"
-        ) {
-            mod += Math.max(character.getAbility("WIS").mod, 1);
-            addEffect(roll_properties, "Otherworldly Glamour");
-        }
-
-        modifier = mod >= 0 ? `+${mod}` : `${mod}`;
-        roll_properties.modifier = modifier;
     }
 
-    if (
-        ability === "STR" &&
-        (
-            (character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
-            (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false))
-        )
-    ) {
+    const roll_properties = {
+        "name": ability_name,
+        "ability": ability,
+        "modifier": modifier
+    }
+
+    if (rollType === "saving-throw") {
+        const proficiency = $(`.ddbc-saving-throws-summary__ability--${ability.toLowerCase()}
+                                .ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip`).attr("data-original-title");
+        roll_properties["proficiency"] = proficiency;
+    }
+
+    if (ability == "STR" &&
+        ((character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
+            (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false)))) {
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
         addEffect(roll_properties, "Rage");
     }
-
-    if (character.hasClassFeature("Indomitable Might") && ability === "STR") {
+    if (character.hasClassFeature("Indomitable Might") && ability == "STR") {
         const min = character.getAbility("STR").score - parseInt(modifier);
-        roll_properties.d20 = `1d20min${min}`;
-        addEffect(roll_properties, "Indomitable Might");
+        roll_properties.d20 = `1d20min${min}`
     }
 
     // Concentration checks
-    if (rollType === "saving-throw" && ability === "CON") {
+    if (rollType == "saving-throw" && ability == "CON") {
         const has_warcaster = character.hasFeat("War Caster");
-        const has_bladesong =
-            character.hasClassFeature("Bladesong") &&
-            character.getSetting("wizard-bladesong", false);
-
+        const has_bladesong = character.hasClassFeature("Bladesong") && character.getSetting("wizard-bladesong", false);
         if (has_warcaster || has_bladesong) {
-            const confirmation = has_bladesong
-                ? 'Your Bladesong whispers: "Is this a Concentration Check?"'
-                : "Is this a Concentration Check?";
-
+            const confirmation = has_bladesong ? 'Your Bladesong whispers: "Is this a Concentration Check?"' : 'Is this a Concentration Check?';
+            // Using confirm because the parent function is not async
             if (confirm(confirmation)) {
+                // Wizard Bladesong Concentration Check Bonus
                 if (has_bladesong) {
-                    const intelligence = character.getAbility("INT") || { mod: 0 };
-                    const bladesongMod = Math.max((parseInt(intelligence.mod) || 0), 1);
-                    mod = parseInt(modifier) + bladesongMod;
-                    modifier = mod >= 0 ? `+${mod}` : `${mod}`;
-                    roll_properties.modifier = modifier;
-                    addEffect(roll_properties, "Bladesong");
+                    const intelligence = character.getAbility("INT") || {mod: 0};
+                    const mod = Math.max((parseInt(intelligence.mod) || 0), 1);
+                    modifier = parseInt(modifier) + mod;
+                    modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+                    roll_properties["modifier"] = modifier;
                 }
-
+                // Feat - War Caster - Concentration Check Bonus
                 if (has_warcaster) {
                     roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-                    addEffect(roll_properties, "Warcaster");
                 }
             }
         }
     }
-
-    // Wizard - War Magic - Durable Magic
-    if (
-        rollType === "saving-throw" &&
-        character.hasClassFeature("Durable Magic") &&
-        character.getSetting("wizard-durable-magic", false)
-    ) {
-        mod = parseInt(roll_properties.modifier) + 2;
-        modifier = mod >= 0 ? `+${mod}` : `${mod}`;
-        roll_properties.modifier = modifier;
-        addEffect(roll_properties, "Durable Magic");
-    }
-
-    // Sorcerer: Clockwork Soul - Trance of Order
-    if (
-        character.hasClassFeature("Trance of Order") &&
-        character.getSetting("sorcerer-trance-of-order", false)
-    ) {
+    if ((rollType == "ability") && (ability == "INT") && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
         roll_properties.d20 = "1d20min10";
-        addEffect(roll_properties, "Trance of Order");
+    
+    // Wizard - War Magic - Saving Throw Bonus
+    if (character.hasClassFeature("Durable Magic") && character.getSetting("wizard-durable-magic", false) &&
+        rollType == "saving-throw") {
+        modifier = parseInt(modifier) + 2;
+        modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+        roll_properties["modifier"] = modifier;
     }
-
-    return sendRollWithCharacter(rollType, "1d20" + roll_properties.modifier, roll_properties);
-}
-
-function rollAbilityOrSavingThrow(paneClass, rollType) {
-    const ability_string = $("." + paneClass + " .ct-sidebar__heading").text().trim();
-    const ability_name = ability_string.split(/\s+/)[0] || "";
-    const ability =
-        (typeof ability_abbreviations !== "undefined" && ability_abbreviations[ability_name]) ||
-        normalizeAbilityName(ability_name);
-
-    const modifier = $(
-        `.${paneClass}__modifier .ct-signed-number,` +
-        `.${paneClass}__modifier .ddbc-signed-number,` +
-        ` .${paneClass} span[class*='styles_modifier'] span[class*='styles_numberDisplay']`
-    ).text().replace(/\s+/g, "");
-
-    let proficiency;
-    if (rollType === "saving-throw" && ability) {
-        proficiency = $(
-            `.ddbc-saving-throws-summary__ability--${ability.toLowerCase()} ` +
-            `.ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip`
-        ).attr("data-original-title");
+    // Fey Wanderer Ranger - Otherworldly Glamour
+    if (rollType == "ability" && character.hasClassFeature("Otherworldly Glamour") && ability == "CHA") {
+        modifier = parseInt(modifier) + Math.max(character.getAbility("WIS").mod,1);
+        modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
+        roll_properties["modifier"] = modifier;
     }
-
-    return applyAbilityOrSavingThrowEffects({
-        rollType,
-        ability_name,
-        ability,
-        modifier,
-        proficiency
-    });
-}
-
-async function rollSavingThrowFromRow(row) {
-    const $row = $(row);
-    const abbr = $row
-        .find(".ct-saving-throws-summary__ability-name abbr, .ddbc-saving-throws-summary__ability-name abbr")
-        .first();
-
-    let ability_name = (abbr.attr("title") || "").trim();
-    let ability = (abbr.text() || "").trim().toUpperCase();
-
-    if (!ability_name && ability) {
-        const fullNames = {
-            STR: "Strength",
-            DEX: "Dexterity",
-            CON: "Constitution",
-            INT: "Intelligence",
-            WIS: "Wisdom",
-            CHA: "Charisma"
-        };
-        ability_name = fullNames[ability] || ability;
-    }
-
-    if (!ability) {
-        ability = normalizeAbilityName(ability_name);
-    }
-
-    const modifier = $row.find(
-        ".ct-saving-throws-summary__ability-modifier .ct-signed-number, " +
-        ".ct-saving-throws-summary__ability-modifier .ddbc-signed-number, " +
-        ".ddbc-saving-throws-summary__ability-modifier .ct-signed-number, " +
-        ".ddbc-saving-throws-summary__ability-modifier .ddbc-signed-number, " +
-        ".ct-saving-throws-summary__ability-modifier span[class*='styles_numberDisplay'], " +
-        ".ddbc-saving-throws-summary__ability-modifier span[class*='styles_numberDisplay']"
-    ).text().replace(/\s+/g, "");
-
-    const proficiency = $row.find(
-        ".ct-saving-throws-summary__ability-proficiency .ct-tooltip, " +
-        ".ct-saving-throws-summary__ability-proficiency .ddbc-tooltip, " +
-        ".ddbc-saving-throws-summary__ability-proficiency .ct-tooltip, " +
-        ".ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip"
-    ).attr("data-original-title");
-
-    return applyAbilityOrSavingThrowEffects({
-        rollType: "saving-throw",
-        ability_name,
-        ability,
-        modifier,
-        proficiency
-    });
+    // Sorcerer: Clockwork Soul - Trance of Order
+    if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
+            roll_properties.d20 = "1d20min10";
+   
+    return sendRollWithCharacter(rollType, "1d20" + modifier, roll_properties);
 }
 
 function rollAbilityCheckFromRow(row) {
@@ -466,12 +366,7 @@ function rollAbilityCheck() {
 }
 
 function rollSavingThrow() {
-    const row = $(".ct-saving-throws-summary__ability.beyond20-active-roll, .ddbc-saving-throws-summary__ability.beyond20-active-roll").first();
-    if (row.length) {
-        return rollSavingThrowFromRow(row[0]);
-    }
-
-    return rollAbilityOrSavingThrow("b20-ability-saving-throws-pane", "saving-throw");
+    rollAbilityOrSavingThrow("b20-ability-saving-throws-pane", "saving-throw");
 }
 
 function rollInitiative() {
@@ -509,6 +404,7 @@ function rollInitiative() {
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
     return sendRollWithCharacter("initiative", "1d20" + initiative, roll_properties);
 }
+
 
 
 function rollHitDie(multiclass, index) {
@@ -625,6 +521,18 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damage_types.push("Radiant");
         }
     }
+    if (character.hasClass("Druid")) {
+        //Druid: Primal Strike
+        if (character.hasClassFeature("Improved Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("2d8");
+            damage_types.push("Primal Strike");
+        } else if (character.hasClassFeature("Elemental Fury") &&
+            character.getSetting("druid-primal-strike", true)) {
+            damages.push("1d8");
+            damage_types.push("Primal Strike");
+        }
+    }
 
     if (character.hasClass("Wizard")) {
         // Wizard: Bladesinging: Song of Victory
@@ -666,8 +574,7 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
     // enhanced unarmed strike
     if(to_hit !== null && 
         character.hasFeat("Tavern Brawler 2024") &&
-        includesNormalized(["enhanced unarmed strike", "unarmed strike", "flurry of blows"], action_name)
-    ) {
+        ["enhanced unarmed strike", "unarmed strike", "flurry of blows"].includes(action_name.toLocaleLowerCase())) {
         damages[0] = damages[0].replace(/[0-9]*d[0-9]+/g, "$&ro<=1");
         effects.push("Tavern Brawler");
     }
@@ -1038,22 +945,66 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
         }
     }
     
+    if (character.hasItemAttuned("Armor of the White Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+    }
+    
+    if (character.hasItemAttuned("Armor of the White and Black Rose", true)) {
+        damages.push("3d6");
+        damage_types.push("Necrotic");
+        damages.push("3d6");
+        damage_types.push("Radiant");
+        damages.push("6d6");
+        damage_types.push("Healing");        
+    }
+
     if (character.hasClass("Rogue")) {
         // Rogue: Sneak Attack
         const name = action_name || item_name || "";
         if(character.hasClassFeature("Sneak Attack") && character.getSetting("rogue-sneak-attack", false) &&
             (properties["Attack Type"] == "Ranged" ||
             (properties["Properties"] && properties["Properties"].includes("Finesse")) ||
+
             name.includes("Psychic Blade") ||
             name.includes("Shadow Blade"))) {
             const sneakDieCount = Math.ceil(character._classes["Rogue"] / 2);
+            
             let sneak_attack = `${sneakDieCount}d6`;
+            if (character.hasFeat("Boon of the Blade")) { 
+                sneak_attack = "10d10";
+            }
+
             damages.push(sneak_attack);
             damage_types.push("Sneak Attack");
             effects.push("Sneak Attack");
 
             const isLocked = character.getSetting("rogue-sneak-attack-lock", false);
             if(!isLocked) settings_to_change["rogue-sneak-attack"] = false;
+        }
+    }
+
+    if (character.hasFeat("Boon of Celestial") && ( (properties["Attack Type"] == "Ranged") || 
+                                                    (properties["Attack Type"] == "Melee")  || 
+                                                    (properties["Attack Type"] == "Unarmed Strike") ||
+                                                    (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Celestial boon (Radiant)");
+    }
+
+    if (character.hasFeat("Boon of Fiend") && ( (properties["Attack Type"] == "Ranged") || 
+                                                (properties["Attack Type"] == "Melee")  || 
+                                                (properties["Attack Type"] == "Unarmed Strike") ||
+                                                (properties["Attack Type"] == "Natural Attack"))) {
+        damages.push("3d8");
+        damage_types.push("Fiend boon (Radiant)");
+    }
+
+    if (character.hasClass("Ranger")) {
+        if ((character.hasFeat("Boon of the Arcane Archer")) && (properties["Attack Type"] == "Ranged")) { 
+            let extraDamage = "1d6";
+            damages.push(extraDamage);
+            damage_types.push("Boon of the Arcane Archer");
         }
     }
 
@@ -1127,8 +1078,19 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
 
                 if(damages.length == 0) {
                     if (versatile_damage != "") {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = versatile_damage.split("d");
+                            const numberBeforeD = 3 * parseInt(versatile_damage.split('d')[0], 10);
+                            versatile_damage = numberBeforeD + "d" + parts[1];
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         versatile_damage = applyGWFIfRequired(item_name, properties, versatile_damage);
                     } else {
+                        if (character.getSetting("Potion-Giant-Size", false)) {
+                            let parts = damage.split("d");
+                            const numberBeforeD = 3 * parseInt(damage.split('d')[0], 10);
+                            damage = numberBeforeD + "d" + parts[1];
+                        }
                         damage = applyGWFIfRequired(item_name, properties, damage);
                     }
                 }
@@ -1401,6 +1363,13 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
                 if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency))
                     roll_properties.d20 = "1d20min10";
+
+                if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+                    roll_properties.d20 = "1d20min10";
+
+                if (ability == "CHA" && character.getSetting("Glibness", false))
+                    roll_properties.d20 = "1d20min15";
+
                 // Sorcerer: Clockwork Soul - Trance of Order
                 if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
                     roll_properties.d20 = "1d20min10";
@@ -1419,6 +1388,14 @@ async function rollItem(force_display = false, force_to_hit_only = false, force_
                 // Mark of Hospitality Halfing - Ever Hospitable
                 if (character.hasRacialTrait("Ever Hospitable") && is_tool && (item_name == "Brewer's Supplies" || item_name == "Cook's Utensils"))
                     roll_properties.modifier += "+1d4";
+                //True Madness for wizards
+                if (ability == "INT" && character.hasClass("Wizard") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
+                //True Madness for wizards
+                if (ability == "WIS" && character.hasClass("Cleric") && character.hasClassFeature("True Madness")) {
+                    roll_properties.modifier += "-"+(character._level/2);
+                }
                 // Mark of Making Human - Artisan's Intuition
                 if (character.hasRacialTrait("Artisan’s Intuition") && is_tool)
                     roll_properties.modifier += "+1d4";
@@ -1445,8 +1422,13 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
     //console.log("Properties are : " + String(properties));
     const action_name = $(".ct-sidebar__heading").text();
     const action_parent = $(".ct-sidebar__header-parent").text();
-    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description']`);
+    const description = descriptionToString(`.ct-action-detail__description, .${paneClass} div[class*='styles_description'], .${paneClass} .ct-item-detail__description`);
+
     let to_hit = properties["To Hit"] !== undefined && properties["To Hit"] !== "--" ? properties["To Hit"] : null;
+    
+    if (!to_hit) {
+        to_hit = findToHit(action_name, ".ct-combat-attack--item,.ddbc-combat-attack--item", ".ct-item-name,.ddbc-item-name,span[class*='styles_itemName']", ".ct-combat-attack__tohit,.ddbc-combat-attack__tohit");
+    }
 
     if (action_name == "Superiority Dice" || action_parent == "Maneuvers") {
         const fighter_level = character.getClassLevel("Fighter");
@@ -1515,7 +1497,7 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
             damages[0] = applyGWFIfRequired(action_name, properties, damages[0]);
         }
 
-        const meleeActions = [
+        const isMeleeAttack = [
             "polearm master",
             "pole strike",
             "unarmed strike",
@@ -1535,8 +1517,7 @@ async function rollAction(paneClass, force_to_hit_only = false, force_damages_on
             "predatory strike",
             "enhanced unarmed strike",
             "flurry of blows"
-        ];
-        const isMeleeAttack = includesNormalized(meleeActions, action_name);
+        ].some(action => action_name.toLocaleLowerCase().includes(action));
         
         const isRangedAttack = action_name.includes("Lightning Launcher");
 
@@ -1799,14 +1780,6 @@ function handleSpecialSpells(spell_name, damages=[], damage_types=[], {spell_sou
 }
     
 function handleSpecialHealingSpells(spell_name, damages=[], damage_types=[], {spell_source="", spell_level="Cantrip", castas, settings_to_change}={}) {
-    // Feat: Healer
-    if (
-        character.hasFeat("Healer 2024") &&
-        character.getSetting("healer-rerolls-feat-2024", "false")
-    ) {
-        damages[0] = damages[0].replace(/[0-9]*d[0-9]+/g, "$&ro<=1")
-    }
-
     // Artificer
     if (character.hasClass("Artificer")) {
         if (character.hasClassFeature("Alchemical Savant") &&
@@ -1963,6 +1936,9 @@ async function rollSpell(force_display = false, force_to_hit_only = false, force
             critical_limit = 19;
         if (spell_full_name === "Blade of Disaster")
             critical_limit = 18;
+
+        properties["cast-at"] = castas;
+
         const roll_properties = await buildAttackRoll(character,
             "spell",
             spell_name,
@@ -3462,7 +3438,6 @@ var settings = getDefaultSettings();
 var character = new Character(settings);
 var creature = null;
 updateSettings();
-installDDBRollHijack();
 chrome.runtime.onMessage.addListener(handleMessage);
 observer = new window.MutationObserver(documentModified);
 observer.observe(document, { subtree: true, childList: true, characterData: true });

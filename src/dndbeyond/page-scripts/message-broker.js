@@ -50,9 +50,22 @@ if (!window.__beyond20_mb2_initialized__) {
         } else {
             return;
         }
-
-        messageBroker.postMessage(message);
+        // Save the character to be used when creating the default roll data context
+        lastCharacter = request.character;
+    } else if (request.action === "rendered-roll") {
+        message.eventType = "custom/beyond20/roll";
+        message.data = {
+            'request': request.request,
+            'render': request.html
+        }
+        // Save the character to be used when creating the default roll data context
+        lastCharacter = request.character;
+	} else {
+        // Unknown action type
+        return;
     }
+	messageBroker.postMessage(message);
+}
 
     function rollToDDBRoll(roll, forceResults = false) {
         let constant = 0;
@@ -172,6 +185,15 @@ if (!window.__beyond20_mb2_initialized__) {
             ...otherRolls.map(r => rollToDDBRoll(r, true))
         ];
     }
+    const rollToType = {
+        "to-hit": "to hit",
+        "damage": "damage",
+        "critical-damage": "damage",
+        "skill-check": "check",
+        "ability-check": "check",
+        "initiative": "check",
+        "saving-throw": "save",
+        "death-save": "save",
 
     function combineD20Rolls(d20Rolls, isAdvantage, isSuper = false) {
         let constant = 0;
@@ -259,6 +281,9 @@ if (!window.__beyond20_mb2_initialized__) {
             if (!head || head.rollId || !rid) return;
             head.rollId = rid;
         };
+    }
+    return data;
+}
 
         // Let deferred/pending flow normally so DDB can mint the native rollId/context
         messageBroker.on("dice/roll/deferred", bindRollIdIfNeeded, { once: false, send: true, recv: false });
@@ -344,6 +369,30 @@ if (!window.__beyond20_mb2_initialized__) {
         for (const event of registeredEvents) {
             document.removeEventListener(...event);
         }
+    };
+    const toSelf = isWhispered(rollData);
+    // For initiative to work in the Encounter builder, it needs to have the action name "Initiative" and not "Initiative(+x)" that B20 sends
+    const action = /^Initiative/.test(rollData.name) ? "Initiative" : rollData.name;
+    messageBroker.postMessage({
+        persist: true,
+        eventType: "dice/roll/fulfilled",
+        entityType: lastMessage.entityType,
+        entityId: lastMessage.entityId,
+        gameId: lastMessage.gameId,
+        messageScope: toSelf ? "userId" : "gameId",
+        messageTarget: toSelf ? lastMessage.userId : lastMessage.gameId,
+        userId: lastMessage.userId,
+        data: {
+            action,
+            rolls: rollData.rolls.map(r => rollToDDBRoll(r, true)),
+            context: lastMessage.data.context,
+            rollId: lastMessage.data.rollId,
+            setId: lastMessage.data.setId || "8201337" // Not setting it makes it use "Basic Black" by default. Using an invalid value is better
+        }
+    });
+    // Avoid overwriting the old roll in case a roll generates multiple fulfilled rolls (critical hit)
+    lastMessage.data.rollId = messageBroker.uuid();
+}
 
         for (const entry of b20OverrideQueue) {
             if (entry?.fallbackTimer) {
