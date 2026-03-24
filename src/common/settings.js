@@ -950,7 +950,7 @@ const character_settings = {
         "type": "bool",
         "default": false,
         "hidden": true
-    }
+    },
     "Glibness": {
         "title": "Glibness",
         "description": "Under the effect of the glibness spell",
