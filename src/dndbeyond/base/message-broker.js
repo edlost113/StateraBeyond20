@@ -4,6 +4,7 @@ class DDBMessageBroker {
         this._mbDispatch = null;
         this._messageQueue = [];
         this._blockMessages = [];
+        this._registered = false;
         this._hooks = {};
         this._characterId = (window.location.pathname.match(/\/characters\/([0-9]+)/) || [])[1];
         this.saveMessages = false;
@@ -19,13 +20,19 @@ class DDBMessageBroker {
         const key = Symbol.for("@dndbeyond/message-broker-lib");
         if (key) this._mb = window[key];
         if (!this._mb) return;
-        this._mb.subscribe(this._onMessage.bind(this));
+
+        this._onMessageBound = this._onMessageBound || this._onMessage.bind(this);
+        this._onDispatchBound = this._onDispatchBound || this._onDispatchMessage.bind(this);
+
+        this._mb.subscribe(this._onMessageBound);
         this._mbDispatch = this._mb.dispatch.bind(this._mb);
-        this._mb.dispatch = this._onDispatchMessage.bind(this);
+        this._mb.dispatch = this._onDispatchBound;
+        this._registered = true;
     }
 
     unregister() {
-        if (!this._mb) return;
+        if (!this._registered || !this._mb) return;
+
         if (this._mbDispatch) {
             this._mb.dispatch = this._mbDispatch;
             this._mbDispatch = null;
@@ -35,6 +42,7 @@ class DDBMessageBroker {
         this._registered = false;
         this._mb = null;
     }
+
     /**
      * Hook on events from the message broker of a particular type
      */

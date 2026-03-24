@@ -215,149 +215,82 @@ async function rollSkillCheck(paneClass) {
 }
 
 function rollAbilityOrSavingThrow(paneClass, rollType) {
-    const ability_string = $("." + paneClass + " .ct-sidebar__heading").text();
-    const ability_name = ability_string.split(" ")[0];
-    const ability = ability_abbreviations[ability_name];
-    let modifier = $(`.${paneClass}__modifier .ct-signed-number,.${paneClass}__modifier .ddbc-signed-number, .${paneClass} span[class*='styles_modifier'] span[class*='styles_numberDisplay']`).text();
+    const ability_string = $("." + paneClass + " .ct-sidebar__heading").text().trim();
+    const ability_name = ability_string.split(/\s+/)[0] || "";
+    const ability =
+        (typeof ability_abbreviations !== "undefined" && ability_abbreviations[ability_name]) ||
+        normalizeAbilityName(ability_name);
 
-    if (rollType == "ability") {
-        // Remarkable Athelete and Jack of All Trades don't stack, we give priority to RA instead of JoaT because
-        // it's rounded up instead of rounded down.
-        if (character.hasClassFeature("Remarkable Athlete") && character.getSetting("champion-remarkable-athlete", false) &&
-            ["STR","DEX", "CON"].includes(ability)) {
-            const remarkable_athlete_mod = Math.ceil(character._proficiency / 2);
-            modifier = parseInt(modifier) + remarkable_athlete_mod;
-            modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-        } else if (character.hasClassFeature("Jack of All Trades") && character.getSetting("bard-joat", false)) {
-            const JoaT = Math.floor(character._proficiency / 2);
-            modifier = parseInt(modifier) + JoaT;
-            modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-        }
-        if (character.getSetting("custom-ability-modifier", "")) {
-            const custom = parseInt(character.getSetting("custom-ability-modifier", "0")) || 0;
-            if (custom != 0)  {
-                modifier = parseInt(modifier) + custom;
-                modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-            }
-        }
+    const modifier = $(
+        `.${paneClass}__modifier .ct-signed-number,` +
+        `.${paneClass}__modifier .ddbc-signed-number,` +
+        ` .${paneClass} span[class*='styles_modifier'] span[class*='styles_numberDisplay']`
+    ).text().replace(/\s+/g, "");
+
+    let proficiency;
+    if (rollType === "saving-throw" && ability) {
+        proficiency = $(
+            `.ddbc-saving-throws-summary__ability--${ability.toLowerCase()} ` +
+            `.ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip`
+        ).attr("data-original-title");
     }
 
-    const roll_properties = {
-        "name": ability_name,
-        "ability": ability,
-        "modifier": modifier
-    }
-
-    if (rollType === "saving-throw") {
-        const proficiency = $(`.ddbc-saving-throws-summary__ability--${ability.toLowerCase()}
-                                .ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip`).attr("data-original-title");
-        roll_properties["proficiency"] = proficiency;
-    }
-
-    if (ability == "STR" &&
-        ((character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
-            (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false)))) {
-        roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-        addEffect(roll_properties, "Rage");
-    }
-    if (character.hasClassFeature("Indomitable Might") && ability == "STR") {
-        const min = character.getAbility("STR").score - parseInt(modifier);
-        roll_properties.d20 = `1d20min${min}`
-    }
-
-    // Concentration checks
-    if (rollType == "saving-throw" && ability == "CON") {
-        const has_warcaster = character.hasFeat("War Caster");
-        const has_bladesong = character.hasClassFeature("Bladesong") && character.getSetting("wizard-bladesong", false);
-        if (has_warcaster || has_bladesong) {
-            const confirmation = has_bladesong ? 'Your Bladesong whispers: "Is this a Concentration Check?"' : 'Is this a Concentration Check?';
-            // Using confirm because the parent function is not async
-            if (confirm(confirmation)) {
-                // Wizard Bladesong Concentration Check Bonus
-                if (has_bladesong) {
-                    const intelligence = character.getAbility("INT") || {mod: 0};
-                    const mod = Math.max((parseInt(intelligence.mod) || 0), 1);
-                    modifier = parseInt(modifier) + mod;
-                    modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-                    roll_properties["modifier"] = modifier;
-                }
-                // Feat - War Caster - Concentration Check Bonus
-                if (has_warcaster) {
-                    roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
-                }
-            }
-        }
-    }
-    if ((rollType == "ability") && (ability == "INT") && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
-        roll_properties.d20 = "1d20min10";
-    
-    // Wizard - War Magic - Saving Throw Bonus
-    if (character.hasClassFeature("Durable Magic") && character.getSetting("wizard-durable-magic", false) &&
-        rollType == "saving-throw") {
-        modifier = parseInt(modifier) + 2;
-        modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-        roll_properties["modifier"] = modifier;
-    }
-    // Fey Wanderer Ranger - Otherworldly Glamour
-    if (rollType == "ability" && character.hasClassFeature("Otherworldly Glamour") && ability == "CHA") {
-        modifier = parseInt(modifier) + Math.max(character.getAbility("WIS").mod,1);
-        modifier = modifier >= 0 ? `+${modifier}` : `${modifier}`;
-        roll_properties["modifier"] = modifier;
-    }
-    // Sorcerer: Clockwork Soul - Trance of Order
-    if (character.hasClassFeature("Trance of Order") && character.getSetting("sorcerer-trance-of-order", false))
-            roll_properties.d20 = "1d20min10";
-   
-    return sendRollWithCharacter(rollType, "1d20" + modifier, roll_properties);
+    return applyAbilityOrSavingThrowEffects({
+        rollType,
+        ability_name,
+        ability,
+        modifier,
+        proficiency
+    });
 }
 
-function rollAbilityCheckFromRow(row) {
+async function rollSavingThrowFromRow(row) {
     const $row = $(row);
+    const abbr = $row
+        .find(".ct-saving-throws-summary__ability-name abbr, .ddbc-saving-throws-summary__ability-name abbr")
+        .first();
 
-    let ability_name = $row
-        .find(".ct-ability-summary__heading .ct-ability-summary__label, .ddbc-ability-summary__heading .ddbc-ability-summary__label")
-        .first()
-        .text()
-        .trim();
+    let ability_name = (abbr.attr("title") || "").trim();
+    let ability = (abbr.text() || "").trim().toUpperCase();
 
-    let ability = normalizeAbilityName(ability_name);
+    if (!ability_name && ability) {
+        const fullNames = {
+            STR: "Strength",
+            DEX: "Dexterity",
+            CON: "Constitution",
+            INT: "Intelligence",
+            WIS: "Wisdom",
+            CHA: "Charisma"
+        };
+        ability_name = fullNames[ability] || ability;
+    }
 
     if (!ability) {
-        const abbr = $row
-            .find(".ct-ability-summary__heading .ct-ability-summary__abbr, .ddbc-ability-summary__heading .ddbc-ability-summary__abbr")
-            .first()
-            .text()
-            .trim()
-            .toUpperCase();
-
-        if (abbr) {
-            ability = normalizeAbilityName(abbr);
-            if (!ability_name) {
-                ability_name = abbreviationToAbility(abbr);
-            }
-        }
+        ability = normalizeAbilityName(ability_name);
     }
 
     const modifier = $row.find(
-        ".ct-ability-summary__primary .ct-signed-number, " +
-        ".ct-ability-summary__primary .ddbc-signed-number, " +
-        ".ct-ability-summary__primary span[class*='styles_numberDisplay'], " +
-        ".ddbc-ability-summary__primary .ct-signed-number, " +
-        ".ddbc-ability-summary__primary .ddbc-signed-number, " +
-        ".ddbc-ability-summary__primary span[class*='styles_numberDisplay'], " +
-        ".ct-ability-summary__secondary .ct-signed-number, " +
-        ".ct-ability-summary__secondary .ddbc-signed-number, " +
-        ".ct-ability-summary__secondary span[class*='styles_numberDisplay'], " +
-        ".ddbc-ability-summary__secondary .ct-signed-number, " +
-        ".ddbc-ability-summary__secondary .ddbc-signed-number, " +
-        ".ddbc-ability-summary__secondary span[class*='styles_numberDisplay']"
-    ).first().text().replace(/\s+/g, "");
+        ".ct-saving-throws-summary__ability-modifier .ct-signed-number, " +
+        ".ct-saving-throws-summary__ability-modifier .ddbc-signed-number, " +
+        ".ddbc-saving-throws-summary__ability-modifier .ct-signed-number, " +
+        ".ddbc-saving-throws-summary__ability-modifier .ddbc-signed-number, " +
+        ".ct-saving-throws-summary__ability-modifier span[class*='styles_numberDisplay'], " +
+        ".ddbc-saving-throws-summary__ability-modifier span[class*='styles_numberDisplay']"
+    ).text().replace(/\s+/g, "");
+
+    const proficiency = $row.find(
+        ".ct-saving-throws-summary__ability-proficiency .ct-tooltip, " +
+        ".ct-saving-throws-summary__ability-proficiency .ddbc-tooltip, " +
+        ".ddbc-saving-throws-summary__ability-proficiency .ct-tooltip, " +
+        ".ddbc-saving-throws-summary__ability-proficiency .ddbc-tooltip"
+    ).attr("data-original-title");
 
     return applyAbilityOrSavingThrowEffects({
-        rollType: "ability",
+        rollType: "saving-throw",
         ability_name,
         ability,
-        modifier
+        modifier,
+        proficiency
     });
 }
 
@@ -3438,6 +3371,7 @@ var settings = getDefaultSettings();
 var character = new Character(settings);
 var creature = null;
 updateSettings();
+installDDBRollHijack();
 chrome.runtime.onMessage.addListener(handleMessage);
 observer = new window.MutationObserver(documentModified);
 observer.observe(document, { subtree: true, childList: true, characterData: true });

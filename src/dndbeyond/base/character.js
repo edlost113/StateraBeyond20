@@ -265,7 +265,7 @@ class Character extends CharacterBase {
             const feat_base_name = feat.childNodes[0].textContent.trim()
             const feat_name = this.getFeatureVersionName(feat_base_name, feat_reference);
             feature_list.push(feat_name);
-            console.log(feat_name);
+        //    console.log(feat_name);
             const options = $(feat).parent().find(".ct-feature-snippet__option > .ct-feature-snippet__heading");
             for (let option of options.toArray()) {
                 const option_name = option.childNodes[0].textContent.trim();
