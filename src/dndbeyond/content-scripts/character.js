@@ -108,13 +108,16 @@ async function rollSkillCheck(paneClass) {
     // Set Reliable Talent flag if character has the feature and skill is proficient/expertise
     if (character.hasClassFeature("Reliable Talent") && ["Proficiency", "Expertise"].includes(proficiency)) {
         addEffect(roll_properties, "Reliable Talent");
+        roll_properties.d20 = "1d20min10";
     }
-    if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)"))))
+    if (ability == "INT" && ((character.hasClass("Wizard") || character.hasClass("Bard")) && (character.hasFeat("Boon of the Arcane Savant(wiz)")))){
         addEffect(roll_properties, "Reliable Talent");
-
-    if (ability == "CHA" && character.getSetting("Glibness", false))
+        roll_properties.d20 = "1d20min10";
+    }
+    if (ability == "CHA" && character.getSetting("Glibness", false)) {
         roll_properties.d20 = "1d20min15";
-  
+        addEffect(roll_properties, "Glibness");
+    }
     // Set Silver Tongue if Deception or Persuasion
     if (character.hasClassFeature("Silver Tongue") && (skill_name === "Deception" || skill_name === "Persuasion")) {
         roll_properties.d20 = "1d20min10";
