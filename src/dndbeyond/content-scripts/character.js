@@ -311,6 +311,56 @@ function rollAbilityOrSavingThrow(paneClass, rollType) {
     return sendRollWithCharacter(rollType, "1d20" + modifier, roll_properties);
 }
 
+function rollAbilityCheckFromRow(row) {
+    const $row = $(row);
+
+    let ability_name = $row
+        .find(".ct-ability-summary__heading .ct-ability-summary__label, .ddbc-ability-summary__heading .ddbc-ability-summary__label")
+        .first()
+        .text()
+        .trim();
+
+    let ability = normalizeAbilityName(ability_name);
+
+    if (!ability) {
+        const abbr = $row
+            .find(".ct-ability-summary__heading .ct-ability-summary__abbr, .ddbc-ability-summary__heading .ddbc-ability-summary__abbr")
+            .first()
+            .text()
+            .trim()
+            .toUpperCase();
+
+        if (abbr) {
+            ability = normalizeAbilityName(abbr);
+            if (!ability_name) {
+                ability_name = abbreviationToAbility(abbr);
+            }
+        }
+    }
+
+    const modifier = $row.find(
+        ".ct-ability-summary__primary .ct-signed-number, " +
+        ".ct-ability-summary__primary .ddbc-signed-number, " +
+        ".ct-ability-summary__primary span[class*='styles_numberDisplay'], " +
+        ".ddbc-ability-summary__primary .ct-signed-number, " +
+        ".ddbc-ability-summary__primary .ddbc-signed-number, " +
+        ".ddbc-ability-summary__primary span[class*='styles_numberDisplay'], " +
+        ".ct-ability-summary__secondary .ct-signed-number, " +
+        ".ct-ability-summary__secondary .ddbc-signed-number, " +
+        ".ct-ability-summary__secondary span[class*='styles_numberDisplay'], " +
+        ".ddbc-ability-summary__secondary .ct-signed-number, " +
+        ".ddbc-ability-summary__secondary .ddbc-signed-number, " +
+        ".ddbc-ability-summary__secondary span[class*='styles_numberDisplay']"
+    ).first().text().replace(/\s+/g, "");
+
+    return applyAbilityOrSavingThrowEffects({
+        rollType: "ability",
+        ability_name,
+        ability,
+        modifier
+    });
+}
+
 function rollAbilityCheck() {
     rollAbilityOrSavingThrow("b20-ability-pane", "ability");
 }
@@ -614,6 +664,15 @@ function handleSpecialGeneralAttacks(damages=[], damage_types=[], properties, se
         character.getSetting("motm-aasimar-radiant-soul", false)) {
         damages.push(character._proficiency);
         damage_types.push("Radiant Soul");
+    }
+    
+    // MotM Bugbear: Surprise Attack
+    if (character.hasRacialTrait("Surprise Attack") &&
+        character.getSetting("motm-bugbear-surprise-attack", false)) {
+        damages.push("2d6");
+        damage_types.push("Surprise Attack");
+        const isLocked = character.getSetting("motm-bugbear-surprise-attack-lock", false);
+        if(!isLocked) settings_to_change["motm-bugbear-surprise-attack"] = false;
     }
 
     // Class Specific
@@ -2672,7 +2731,7 @@ function deactivateQuickRolls() {
     let abilities = $(".ddbc-ability-summary .ddbc-ability-summary__primary .integrated-dice__container");
     // If digital dice are disabled, look up where the modifier is
     if (abilities.length === 0)
-        abilities = $(".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary .ddbc-signed-number, .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary .ddbc-signed-number, .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary span[class*='styles_numberDisplay'], .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary span[class*='styles_numberDisplay']");
+        abilities = $(".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary .ddbc-signed-number, .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary .ddbc-signed-number, .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary span[class*='styles_numberDisplay'], .ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary span[class*='styles_numberDisplay'], .ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary .ddbc-signed-number, .ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__primary .ddbc-signed-number, .ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary span[class*='styles_numberDisplay'], .ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__primary span[class*='styles_numberDisplay']");
     const saving_throws = $(".ct-saving-throws-summary__ability .ct-saving-throws-summary__ability-modifier,.ddbc-saving-throws-summary__ability .ddbc-saving-throws-summary__ability-modifier");
     const skills = $(".ct-skills .ct-skills__list .ct-skills__col--modifier,.ddbc-skills .ddbc-skills__list .ddbc-skills__col--modifier");
     const actions = $(".ct-combat-attack .ct-combat-attack__icon,.ddbc-combat-attack .ddbc-combat-attack__icon");
@@ -2729,15 +2788,10 @@ function activateQuickRolls() {
     });
     for (let ability of abilities.toArray()) {
         activateTooltipListeners($(ability), 'down', beyond20_tooltip, (el) => {
-            const name = el.closest(".ct-ability-summary,.ddbc-ability-summary")
-                .find(".ct-ability-summary__heading .ct-ability-summary__label,.ddbc-ability-summary__heading .ddbc-ability-summary__label")
-                .trigger('click').text();
-            // If same item, clicking will be a noop && it won't modify the document;
-            const pane_name = $(".b20-ability-pane .ct-sidebar__heading").text().split(" ")[0];
-            if (name == pane_name)
-                execute("b20-ability-pane");
-            else
-                quick_roll = true;
+            const row = el.closest(".ct-ability-summary,.ddbc-ability-summary");
+            if (row.length > 0) {
+                rollAbilityCheckFromRow(row[0]);
+            }
         });
     }
 
@@ -3060,6 +3114,324 @@ function handleMessage(request, sender, sendResponse) {
     } else if (request.action == "open-options") {
         alertFullSettings();
     }
+}
+
+let ddbRollHijackInstalled = false;
+
+function swallowRollEvent(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+    }
+}
+
+function handleCombatAttackIntegratedDie(button) {
+    const row = button.closest(".ct-combat-attack, .ddbc-combat-attack");
+    if (!row) return false;
+
+    const isToHit = !!button.closest(".ct-combat-attack__tohit, .ddbc-combat-attack__tohit");
+    const damageCell = button.closest(".ct-combat-attack__damage, .ddbc-combat-attack__damage");
+    const isDamage = !!damageCell;
+    const forceVersatile = !!(damageCell && damageCell.previousElementSibling);
+
+    const name = $(row)
+        .find(".ct-combat-attack__name .ct-combat-attack__label, .ddbc-combat-attack__name .ddbc-combat-attack__label")
+        .first()
+        .text()
+        .trim();
+
+    let pane = null;
+    let paneClass = null;
+
+    for (paneClass of ["b20-item-pane", "b20-action-pane", "ct-custom-action-pane", "b20-custom-action-pane", "ct-spell-pane"]) {
+        pane = $("." + paneClass);
+        if (pane.length > 0) break;
+    }
+
+    const paneName = pane && pane.length
+        ? pane.find(".ct-sidebar__heading").text().trim()
+        : "";
+
+    if (name && paneName === name && paneClass) {
+        const waitForPane = async () => {
+            const paneSelectors = {
+                "b20-item-pane": ".ct-item-detail",
+                "b20-action-pane": ".ct-available-actions",
+                "ct-custom-action-pane": ".ct-custom-action-pane",
+                "b20-custom-action-pane": ".ct-available-actions",
+                "ct-spell-pane": ".ct-spell-details"
+            };
+            const selector = paneSelectors[paneClass];
+            for (let i = 0; i < 5; i++) {
+                if ($(selector).length > 0) break;
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            execute(paneClass, {
+                force_to_hit_only: isToHit,
+                force_damages_only: isDamage,
+                force_versatile: forceVersatile
+            });
+        };
+        waitForPane();
+    } else {
+        quick_roll_force_attack = isToHit;
+        quick_roll_force_damage = isDamage;
+        quick_roll_force_versatile = forceVersatile;
+        quick_roll = true;
+
+        $(row)
+            .find(".ct-combat-attack__name .ct-combat-attack__label, .ddbc-combat-attack__name .ddbc-combat-attack__label")
+            .first()
+            .trigger("click");
+    }
+
+    return true;
+}
+
+function handleSpellIntegratedDie(button) {
+    const row = button.closest(".ct-spells-spell, .ddbc-spells-spell");
+    if (!row) return false;
+
+    const isToHit = !!button.closest(".ct-spells-spell__tohit, .ddbc-spells-spell__tohit");
+    const isDamage = !!button.closest(".ct-spells-spell__damage, .ddbc-spells-spell__damage");
+
+    const nameElement = $(row)
+        .find(".ct-spell-name, .ddbc-spell-name, span[class*='styles_spellName']")
+        .first();
+
+    const spellName = nameElement.text().trim();
+    const paneName = $(".ct-spell-pane .ct-sidebar__heading .ct-spell-name, .ct-spell-pane .ct-sidebar__heading .ddbc-spell-name, .ct-spell-pane .ct-sidebar__heading span[class*='styles_spellName']")
+        .text()
+        .trim();
+
+    if (spellName && spellName === paneName) {
+        const castas = $(".ct-spell-caster__casting-level-current").text();
+        const level = $(row).closest(".ct-content-group").find(".ct-content-group__header-content").text();
+        const paneLevel = castas === "" ? "Cantrip" : `${castas} Level`;
+
+        if (paneLevel.toLowerCase() === level.toLowerCase()) {
+            const waitForSpellPane = async () => {
+                for (let i = 0; i < 5; i++) {
+                    if ($(".ct-spell-details").length > 0) break;
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                execute("ct-spell-pane", {
+                    force_to_hit_only: isToHit,
+                    force_damages_only: isDamage
+                });
+            };
+            waitForSpellPane();
+        } else {
+            $(".ddbc-character-tidbits__menu-callout").trigger("click");
+            nameElement.trigger("click");
+
+            quick_roll_force_attack = isToHit;
+            quick_roll_force_damage = isDamage;
+            quick_roll_force_versatile = false;
+            quick_roll = true;
+        }
+    } else {
+        quick_roll_force_attack = isToHit;
+        quick_roll_force_damage = isDamage;
+        quick_roll_force_versatile = false;
+        quick_roll = true;
+
+        nameElement.trigger("click");
+    }
+
+    return true;
+}
+
+function handleAbilityIntegratedDie(target) {
+    const row = target.closest(".ct-ability-summary, .ddbc-ability-summary");
+    if (!row) return false;
+
+    resetHijackQuickRollState();
+    rollAbilityCheckFromRow(row);
+    return true;
+}
+
+function handleSavingThrowIntegratedDie(target) {
+    const row = target.closest(".ct-saving-throws-summary__ability, .ddbc-saving-throws-summary__ability");
+    if (!row) return false;
+
+    resetHijackQuickRollState();
+
+    $(".ct-saving-throws-summary__ability.beyond20-active-roll, .ddbc-saving-throws-summary__ability.beyond20-active-roll")
+        .removeClass("beyond20-active-roll");
+
+    $(row).addClass("beyond20-active-roll");
+
+    rollSavingThrowFromRow(row);
+    return true;
+}
+
+function handleSkillIntegratedDie(target) {
+    const row = target.closest(".ct-skills__item, .ddbc-skills__item");
+    if (!row) return false;
+
+    const label = $(row)
+        .find(".ct-skills__col--skill, .ddbc-skills__col--skill")
+        .first();
+
+    const name = label.text().trim();
+
+    let pane = null;
+    let paneClass = null;
+
+    for (const cls of ["ct-skill-pane", "ct-custom-skill-pane"]) {
+        const found = $("." + cls);
+        if (found.length > 0) {
+            pane = found;
+            paneClass = cls;
+            break;
+        }
+    }
+
+    const paneName = pane && paneClass
+        ? pane.find(".ct-sidebar__heading ." + paneClass + "__header-name").text().trim()
+        : "";
+
+    if (name && paneName && name === paneName && paneClass) {
+        resetHijackQuickRollState();
+        execute(paneClass);
+    } else {
+        resetHijackQuickRollState();
+        quick_roll = true;
+        label.trigger("click");
+    }
+
+    return true;
+}
+
+function handleInitiativeIntegratedDie(target) {
+    const row = target.closest(
+        ".ct-combat__summary-group--initiative, " +
+        ".ct-combat-tablet__extra--initiative, " +
+        ".ct-combat-mobile__extras > section[class*='styles_boxMobile']"
+    );
+    if (!row) return false;
+
+    if ($(".b20-initiative-pane").length) {
+        resetHijackQuickRollState();
+        execute("b20-initiative-pane");
+    } else {
+        resetHijackQuickRollState();
+        quick_roll = true;
+
+        const valueContainer = target.closest("div[class*='styles_value']");
+        if (valueContainer) {
+            $(valueContainer).trigger("click");
+        } else {
+            $(target).trigger("click");
+        }
+    }
+
+    return true;
+}
+
+function resetHijackQuickRollState() {
+    quick_roll = false;
+    quick_roll_force_attack = false;
+    quick_roll_force_damage = false;
+    quick_roll_force_versatile = false;
+
+    if (quick_roll_timeout > 0) {
+        clearTimeout(quick_roll_timeout);
+        quick_roll_timeout = 0;
+    }
+}
+
+let ddbHijackPointerHandled = false;
+
+function installDDBRollHijack() {
+    if (ddbRollHijackInstalled) return;
+    ddbRollHijackInstalled = true;
+
+    const selector = [
+        "button.integrated-dice__container.beyond20-quick-roll-area",
+        "button.integrated-dice__container",
+
+        ".ct-saving-throws-summary__ability .ct-saving-throws-summary__ability-modifier",
+        ".ddbc-saving-throws-summary__ability .ddbc-saving-throws-summary__ability-modifier",
+
+        ".ct-skills .ct-skills__list .ct-skills__col--modifier",
+        ".ddbc-skills .ddbc-skills__list .ddbc-skills__col--modifier",
+
+        ".ct-combat__summary-group--initiative .integrated-dice__container",
+        ".ct-combat__summary-group--initiative span[class*='styles_numberDisplay']",
+        ".ct-combat-tablet__extra--initiative .integrated-dice__container",
+        ".ct-combat-tablet__extra--initiative span[class*='styles_numberDisplay']",
+        ".ct-combat-mobile__extras > section[class*='styles_boxMobile'] .integrated-dice__container",
+        ".ct-combat-mobile__extras > section[class*='styles_boxMobile'] span[class*='styles_numberDisplay']",
+
+        ".ddbc-ability-summary .ddbc-ability-summary__primary .integrated-dice__container",
+        ".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary .ddbc-signed-number",
+        ".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary .ddbc-signed-number",
+        ".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary span[class*='styles_numberDisplay']",
+        ".ct-quick-info__abilities .ddbc-ability-summary .ddbc-ability-summary__primary span[class*='styles_numberDisplay']",
+        ".ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary .ddbc-signed-number",
+        ".ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__primary .ddbc-signed-number",
+        ".ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__secondary span[class*='styles_numberDisplay']",
+        ".ct-main-mobile__abilities .ddbc-ability-summary .ddbc-ability-summary__primary span[class*='styles_numberDisplay']"
+    ].join(", ");
+
+    const routeTarget = (target) => {
+        if (!target) return false;
+        if (handleCombatAttackIntegratedDie(target)) return true;
+        if (handleSpellIntegratedDie(target)) return true;
+        if (handleInitiativeIntegratedDie(target)) return true;
+        if (handleAbilityIntegratedDie(target)) return true;
+        if (handleSavingThrowIntegratedDie(target)) return true;
+        if (handleSkillIntegratedDie(target)) return true;
+        return false;
+    };
+
+    const interceptPointer = (event) => {
+        if (event.button !== 0) return;
+        const target = event.target.closest(selector);
+        if (!target) return;
+
+        ddbHijackPointerHandled = true;
+        swallowRollEvent(event);
+
+        const handled = routeTarget(target);
+        if (!handled) {
+            ddbHijackPointerHandled = false;
+        }
+    };
+
+    const interceptClick = (event) => {
+        if (event.button !== 0) return;
+        const target = event.target.closest(selector);
+        if (!target) return;
+
+        if (ddbHijackPointerHandled) {
+            swallowRollEvent(event);
+            ddbHijackPointerHandled = false;
+            return;
+        }
+
+        swallowRollEvent(event);
+        routeTarget(target);
+    };
+
+    window.addEventListener("pointerdown", interceptPointer, true);
+
+    window.addEventListener("click", interceptClick, true);
+
+    window.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+
+        const target = event.target.closest(selector);
+        if (!target) return;
+
+        swallowRollEvent(event);
+        routeTarget(target);
+    }, true);
+
+    console.log("Beyond20: DDB roll hijack installed.");
 }
 
 var settings = getDefaultSettings();

@@ -91,6 +91,7 @@ See the [Screenshots](screenshots) page for a video tour of some of the features
 * Feat: Flames of Phlegethos
 * Feat: Polearm Master
 * Aasimar: Radiant Soul
+* Bugbear: Surprise Attack
 * Artificer: Arcane Firearm
 * Artificer: Alchemical Savant
 * Artificer: Armorer Power Armor
