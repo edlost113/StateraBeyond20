@@ -981,6 +981,12 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
+    "Eldritch-Claw-Tattoo": {
+        "title": "Eldritch Claw Tattoo",
+        "description": "Eldritch Maul: As a bonus action, you can empower the tattoo for 1 minute. For the duration, each of your melee attacks with a weapon or an unarmed strike can reach a target up to 15 feet away from you, as inky tendrils launch toward the target. In addition, your melee attacks deal an extra 1d6 force damage on a hit. Once used, this bonus action can’t be used again until the next dawn.",
+        "type": "bool",
+        "default": false
+    },
     "Potion-Giant-Size": {
         "title": "Potion of Giant Size",
         "description": "When you drink this potion, you become Huge for 24 hours if you are Medium or smaller, otherwise the potion does nothing. For that duration, your Strength becomes 25, if it isn’t already higher, and your hit point maximum is doubled (your current hit points are doubled when you drink the potion). In addition, the reach of your melee attacks increases by 5 feet.\nEverything you are carrying and wearing also increases in size for the duration. When rolling damage for weapons enlarged in this manner, roll three times the normal number of dice",

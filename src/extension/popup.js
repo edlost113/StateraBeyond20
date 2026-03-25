@@ -401,7 +401,7 @@ function populateCharacter(response) {
         e = createHTMLOption("Hunters-Mark", false, character_settings);
         options.append(e);
 
-        e = createHTMLOption("Potion-Giant-Size", false, character_settings);
+        e = createHTMLOption("Eldritch-Claw-Tattoo", false, character_settings);
         options.append(e);
     }
     $('.beyond20-option-input').off('change', save_settings);
