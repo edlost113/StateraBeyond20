@@ -334,7 +334,9 @@ function rollInitiative() {
         const isLocked = character.getSetting("rogue-assassinate-lock", false);
         if(!isLocked) character.mergeCharacterSettings({"rogue-assassinate-2024": false});
     }
-
+    if (character.getSetting("Gift-Alacrity",false)) {
+        initiative = initiative +"+1d8";
+    }
     const roll_properties = { "initiative": initiative }
     if (advantage)
         roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
