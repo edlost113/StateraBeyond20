@@ -384,10 +384,12 @@ function populateCharacter(response) {
         }
 
         e = createHTMLOption("Gift-Alacrity", false, character_settings);
+        e.classList.add("effects-option");
         options.append(e);
 
         if (Object.keys(response.classes).includes("Wizard")) {
             e = createHTMLOption("Chrono-Fungal-Surge", false, character_settings);
+            e.classList.add("effects-option");
             options.append(e);
         }
         if (response["class-features"].includes("Frigid Explorer")) {
@@ -396,12 +398,15 @@ function populateCharacter(response) {
         }
 
         e = createHTMLOption("Hex", false, character_settings);
+        e.classList.add("effects-option");
         options.append(e);
 
         e = createHTMLOption("Hunters-Mark", false, character_settings);
+        e.classList.add("effects-option");
         options.append(e);
 
         e = createHTMLOption("Eldritch-Claw-Tattoo", false, character_settings);
+        e.classList.add("effects-option");
         options.append(e);
     }
     $('.beyond20-option-input').off('change', save_settings);

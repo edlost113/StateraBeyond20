@@ -246,6 +246,137 @@ function rollAbilityOrSavingThrow(paneClass, rollType) {
         proficiency
     });
 }
+function applyAbilityOrSavingThrowEffects({ rollType, ability_name, ability, modifier, proficiency }) {
+    let mod = parseInt(modifier);
+    const roll_properties = {
+        name: ability_name,
+        ability: ability,
+        modifier: modifier
+    };
+
+    if (rollType === "saving-throw") {
+        roll_properties.proficiency = proficiency;
+    }
+
+    if (!ability) {
+        console.warn("Beyond20: could not resolve ability", {
+            rollType,
+            ability_name,
+            ability,
+            modifier,
+            proficiency
+        });
+        return;
+    }
+
+    if (rollType === "ability") {
+        // Remarkable Athlete and Jack of All Trades don't stack.
+        // Give priority to Remarkable Athlete because it rounds up.
+        if (
+            character.hasClassFeature("Remarkable Athlete") &&
+            character.getSetting("champion-remarkable-athlete", false) &&
+            ["STR", "DEX", "CON"].includes(ability)
+        ) {
+            mod += Math.ceil(character._proficiency / 2);
+            addEffect(roll_properties, "Remarkable Athlete");
+        } else if (
+            character.hasClassFeature("Jack of All Trades") &&
+            character.getSetting("bard-joat", false)
+        ) {
+            mod += Math.floor(character._proficiency / 2);
+            addEffect(roll_properties, "Jack of All Trades");
+        }
+
+        if (character.getSetting("custom-ability-modifier", "")) {
+            const custom = parseInt(character.getSetting("custom-ability-modifier", "0")) || 0;
+            if (custom !== 0) {
+                mod += custom;
+            }
+        }
+
+        // Fey Wanderer Ranger - Otherworldly Glamour
+        if (
+            character.hasClassFeature("Otherworldly Glamour") &&
+            ability === "CHA"
+        ) {
+            mod += Math.max(character.getAbility("WIS").mod, 1);
+            addEffect(roll_properties, "Otherworldly Glamour");
+        }
+
+        modifier = mod >= 0 ? `+${mod}` : `${mod}`;
+        roll_properties.modifier = modifier;
+    }
+
+    if (
+        ability === "STR" &&
+        (
+            (character.hasClassFeature("Rage") && character.getSetting("barbarian-rage", false)) ||
+            (character.hasClassFeature("Giant’s Might") && character.getSetting("fighter-giant-might", false))
+        )
+    ) {
+        roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
+        addEffect(roll_properties, "Rage");
+    }
+
+    if (character.hasClassFeature("Indomitable Might") && ability === "STR") {
+        const min = character.getAbility("STR").score - parseInt(modifier);
+        roll_properties.d20 = `1d20min${min}`;
+        addEffect(roll_properties, "Indomitable Might");
+    }
+
+    // Concentration checks
+    if (rollType === "saving-throw" && ability === "CON") {
+        const has_warcaster = character.hasFeat("War Caster");
+        const has_bladesong =
+            character.hasClassFeature("Bladesong") &&
+            character.getSetting("wizard-bladesong", false);
+
+        if (has_warcaster || has_bladesong) {
+            const confirmation = has_bladesong
+                ? 'Your Bladesong whispers: "Is this a Concentration Check?"'
+                : "Is this a Concentration Check?";
+
+            if (confirm(confirmation)) {
+                if (has_bladesong) {
+                    const intelligence = character.getAbility("INT") || { mod: 0 };
+                    const bladesongMod = Math.max((parseInt(intelligence.mod) || 0), 1);
+                    mod = parseInt(modifier) + bladesongMod;
+                    modifier = mod >= 0 ? `+${mod}` : `${mod}`;
+                    roll_properties.modifier = modifier;
+                    addEffect(roll_properties, "Bladesong");
+                }
+
+                if (has_warcaster) {
+                    roll_properties["advantage"] = RollType.OVERRIDE_ADVANTAGE;
+                    addEffect(roll_properties, "Warcaster");
+                }
+            }
+        }
+    }
+
+    // Wizard - War Magic - Durable Magic
+    if (
+        rollType === "saving-throw" &&
+        character.hasClassFeature("Durable Magic") &&
+        character.getSetting("wizard-durable-magic", false)
+    ) {
+        mod = parseInt(roll_properties.modifier) + 2;
+        modifier = mod >= 0 ? `+${mod}` : `${mod}`;
+        roll_properties.modifier = modifier;
+        addEffect(roll_properties, "Durable Magic");
+    }
+
+    // Sorcerer: Clockwork Soul - Trance of Order
+    if (
+        character.hasClassFeature("Trance of Order") &&
+        character.getSetting("sorcerer-trance-of-order", false)
+    ) {
+        roll_properties.d20 = "1d20min10";
+        addEffect(roll_properties, "Trance of Order");
+    }
+
+    return sendRollWithCharacter(rollType, "1d20" + roll_properties.modifier, roll_properties);
+}
 
 async function rollSavingThrowFromRow(row) {
     const $row = $(row);
