@@ -54,7 +54,7 @@ if (!window.__beyond20_mb2_initialized__) {
         messageBroker.postMessage(message);
     }
 
-    function rollToDDBRoll(roll, forceResults = false) {
+    function rollToDDBRoll(roll, forceResults = false, damageType = null) {
         let constant = 0;
         let lastOperation = "+";
         const sets = [];
@@ -117,6 +117,11 @@ if (!window.__beyond20_mb2_initialized__) {
             "death-save": "save",
         };
 
+        let rollType = rollToType[roll.type] || "roll";
+        if (damageType && (roll.type === "damage" || roll.type === "critical-damage")) {
+            rollType = damageType;
+        }
+
         const data = {
             diceNotation: {
                 constant,
@@ -124,7 +129,7 @@ if (!window.__beyond20_mb2_initialized__) {
             },
             diceNotationStr: roll.formula,
             rollKind: rollToKind[roll.type] || "",
-            rollType: rollToType[roll.type] || "roll"
+            rollType: rollType
         };
 
         if (forceResults || results.length > 0) {
@@ -156,9 +161,16 @@ if (!window.__beyond20_mb2_initialized__) {
         const isDisadvantage = advantage === 4;
         const isSuperAdvantage = advantage === 6;
         const isSuperDisadvantage = advantage === 7;
+        
+        const damageTypes = request["damage-types"] || [];
 
         if (!isAdvantage && !isDisadvantage && !isSuperAdvantage && !isSuperDisadvantage) {
-            return rolls.map(r => rollToDDBRoll(r, true));
+            let damageTypeIndex = 0;
+            return rolls.map((r) => {
+                const isDamageRoll = r.type === "damage" || r.type === "critical-damage";
+                const dt = isDamageRoll ? damageTypes[damageTypeIndex++] : null;
+                return rollToDDBRoll(r, true, dt);
+            });
         }
 
         const [d20Rolls, otherRolls] = [[], []];
@@ -167,9 +179,14 @@ if (!window.__beyond20_mb2_initialized__) {
         }
 
         const isAdv = isAdvantage || isSuperAdvantage;
+        let damageTypeIndex = 0;
         return [
             ...(d20Rolls.length ? [combineD20Rolls(d20Rolls, isAdv, isSuperAdvantage || isSuperDisadvantage)] : []),
-            ...otherRolls.map(r => rollToDDBRoll(r, true))
+            ...otherRolls.map((r) => {
+                const isDamageRoll = r.type === "damage" || r.type === "critical-damage";
+                const dt = isDamageRoll ? damageTypes[damageTypeIndex++] : null;
+                return rollToDDBRoll(r, true, dt);
+            })
         ];
     }
 
@@ -398,22 +415,29 @@ if (!window.__beyond20_mb2_initialized__) {
         messageBroker.on("dice/roll/pending", bindRollIdIfNeeded, { once: false, send: true, recv: false });
 
         // Intercept fulfilled BEFORE it reaches the DDB game log.
-        // We manually forward it to the digital-dice bridge first so dice parsing still works.
+        // Block rolls we initiated (we have queue entry), allow dice toolbox rolls through.
         messageBroker.on("dice/roll/fulfilled", (message) => {
-            if (!b20OverrideQueue.length) return;
-            if (message?.data && message.data[B20_OVERRIDE_MARKER]) return;
+            // Allow Beyond20 override messages through
+            if (message?.data && message.data[B20_OVERRIDE_MARKER]) {
+                return;
+            }
 
             const rid = message?.data?.rollId;
-            let idx = (rid ? b20OverrideQueue.findIndex(e => e.rollId === rid) : -1);
-            if (idx === -1) idx = 0;
-
-            const entry = b20OverrideQueue[idx];
-            if (!entry) return;
-
-            entry.ddbFulfilled = message;
-            if (!entry.rollId && rid) entry.rollId = rid;
-
-            // Preserve digital dice result parsing even though we suppress the native fulfilled
+            
+            // Check if this rollId matches any of our queue entries
+            let queueIdx = -1;
+            if (rid && b20OverrideQueue.length) {
+                queueIdx = b20OverrideQueue.findIndex(e => e.rollId === rid);
+            }
+            
+            // If no matching queue entry, this is a dice toolbox roll - allow through
+            if (queueIdx === -1) {
+                return;
+            }
+            
+            const entry = b20OverrideQueue[queueIdx];
+            
+            // Preserve digital dice result parsing
             try {
                 if (typeof messageBroker._forwardDiceRollEvent === "function") {
                     messageBroker._forwardDiceRollEvent(message);
@@ -422,21 +446,25 @@ if (!window.__beyond20_mb2_initialized__) {
                 console.warn("Beyond20: failed to forward fulfilled message to dice bridge", e);
             }
 
+            if (!entry.rollId && rid) entry.rollId = rid;
+            entry.ddbFulfilled = message;
+
             if (entry.rollData) {
-                _dispatchOverrideFulfilled(entry, idx);
+                _dispatchOverrideFulfilled(entry, queueIdx);
                 return false;
             }
 
+            // No rollData yet, start fallback timer
             if (!entry.fallbackTimer) {
                 entry.fallbackTimer = setTimeout(() => {
                     entry.fallbackTimer = null;
-                    _dispatchOriginalFulfilled(entry, idx);
+                    _dispatchOriginalFulfilled(entry, queueIdx);
                 }, 2000);
             }
-
-            // Always suppress the native fulfilled from reaching the DDB game log directly
+            
+            // Block while we wait for rollData
             return false;
-        }, { once: false, send: true, recv: false });
+        }, { once: false, send: true, recv: true });
     }
 
     function pendingRoll(rollData) {
@@ -500,4 +528,7 @@ if (!window.__beyond20_mb2_initialized__) {
     registered_events.push(addCustomEventListener("disconnect", disconnectAllEvents));
 
     window[EVENTS_KEY] = registered_events;
+    
+    // Install hooks immediately so we can intercept messages from other players
+    _installB20OverrideHooksOnce();
 }
