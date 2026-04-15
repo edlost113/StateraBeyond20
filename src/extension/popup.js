@@ -405,6 +405,10 @@ function populateCharacter(response) {
         e.classList.add("effects-option");
         options.append(e);
 
+        e = createHTMLOption("True-Strike", false, character_settings);
+        e.classList.add("effects-option");
+        options.append(e);
+
         e = createHTMLOption("Eldritch-Claw-Tattoo", false, character_settings);
         e.classList.add("effects-option");
         options.append(e);

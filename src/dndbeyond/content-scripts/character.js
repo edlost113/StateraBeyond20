@@ -909,6 +909,22 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
             if(!isLocked) settings_to_change["bard-psychic-blades"] = false;
         }
     }
+    if (    character.getSetting("True-Strike", false)) {
+            const wizard_level = character.getLevel();
+            let blades_dmg = "";
+            if (wizard_level < 5)
+                blades_dmg = ""
+            else if (wizard_level < 11)
+                blades_dmg = "1d6"
+            else if (wizard_level < 17)
+                blades_dmg = "2d6"
+            else
+                blades_dmg = "3d6"
+            damages.push(blades_dmg);
+            damage_types.push("True Strike");
+            const isLocked = character.getSetting("spell-true-strike-lock", false);
+            if(!isLocked) settings_to_change["True-Strike"] = false;
+        }
 
     if (character.hasClass("Blood Hunter")) {
         // Bloodhunter: Crimson Rite

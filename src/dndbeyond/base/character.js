@@ -560,6 +560,10 @@ class Character extends CharacterBase {
                 this.hasFeat("Great Weapon Fighting 2024");
         return (check2014 && hasGWF2014) || (check2024 && hasGWF2024);
     }
+    getLevel() {
+        return this._level;
+    }
+
     getClassLevel(name) {
         name = this.fixBloodHunterClassName(name);
         return this._classes[name] || 0;
