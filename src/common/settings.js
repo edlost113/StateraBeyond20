@@ -975,7 +975,7 @@ const character_settings = {
         "type": "bool",
         "default": false
     },
-    "True-Strike": {
+    "spell-true-strike": {
         "title": "True Strike",
         "description": "Under the effect of the True Strike spell",
         "type": "bool",

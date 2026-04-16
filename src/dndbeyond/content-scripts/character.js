@@ -909,7 +909,7 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
             if(!isLocked) settings_to_change["bard-psychic-blades"] = false;
         }
     }
-    if (    character.getSetting("True-Strike", false)) {
+    if (    character.getSetting("spell-true-strike", false)) {
             const wizard_level = character.getLevel();
             let blades_dmg = "";
             if (wizard_level < 5)
@@ -923,7 +923,7 @@ function handleSpecialWeaponAttacks(damages=[], damage_types=[], properties, set
             damages.push(blades_dmg);
             damage_types.push("True Strike");
             const isLocked = character.getSetting("spell-true-strike-lock", false);
-            if(!isLocked) settings_to_change["True-Strike"] = false;
+            if(!isLocked) settings_to_change["spell-true-strike"] = false;
         }
 
     if (character.hasClass("Blood Hunter")) {
