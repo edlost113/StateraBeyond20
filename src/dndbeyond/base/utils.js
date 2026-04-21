@@ -132,6 +132,32 @@ function damagesToCrits(character, damages) {
     return crits;
 }
 
+async function queryGenericChoice(name, damages, damage_types, possible_types) {
+    const damage_choices = possible_types;
+    const id = `dmg-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const choice = await dndbeyondDiceRoller.queryDamageType(name, possible_types, id);
+    if (choice === null) return null; // query was cancelled
+
+    // If possible_types is an array, the query returns the index (as a string).
+    // If it's an object, the query returns the selected key.
+    if (Array.isArray(possible_types)) {
+        const idx = parseInt(choice, 10);
+        const label = possible_types[idx];
+        const fallbackDamage = damages.length > 0 ? (damages[idx] !== undefined ? damages[idx] : damages[0]) : "";
+        // Replace contents with only the selected damage/type
+        damages.splice(0, damages.length, fallbackDamage);
+        damage_types.splice(0, damage_types.length, label);
+    } else {
+        // possible_types is an object mapping damage type -> damage formula
+        const dmgValue = damage_choices[choice];
+        // Replace contents with only the selected damage/type
+        damages.splice(0, damages.length, dmgValue);
+        damage_types.splice(0, damage_types.length, choice);
+    }
+
+    return choice;
+}
+
 async function queryDamageTypeFromArray(name, damages, damage_types, possible_types) {
     const damage_choices = {}
     let first_idx = -1;
@@ -386,8 +412,20 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                 damage_types.push("Spine of Mol Krad (Psychic)");
             }
         }
-
-        if (roll_properties.name === "Chromatic Orb") {
+        if (roll_properties.name === "Water Bullet") {
+            const choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-10", "Range: 11-60", "Range: 61-90"]);
+            if (choice === null) return null; // Query was cancelled;
+            const num = parseInt(properties["cast-at"], 10) || 0; 
+            const choiceNum = parseInt(choice,  10) || 0;
+            let counter = num - 1;
+            if (choiceNum > 0) {
+                if (counter > 0){
+                    damages.push("+" + counter + "d6");
+                    damage_types.push("Bludgeoning (Water Bullet)");
+                }
+            }
+        }
+        else if (roll_properties.name === "Chromatic Orb") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Thunder"]);
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Sorcerous Burst") {
