@@ -1838,9 +1838,10 @@ function handleSpecialSpells(spell_name, damages=[], damage_types=[], {spell_sou
     // Check for Elemental Adept Feats
     const elementalAdepts = [];
     for (let feature of character._feats) {
-        const match = feature.match("Elemental Adept \\((.*)\\)");
+        const match = feature.match(/Elemental Adept(?: \(([^)]+)\)|: (.+))/);
         if (match) {
-            elementalAdepts.push(match[1]);
+            const value = match[1] ?? match[2];
+            elementalAdepts.push(value);
         }
     }
     for (let elementalAdept of elementalAdepts) {
