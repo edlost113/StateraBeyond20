@@ -982,6 +982,13 @@ const character_settings = {
         "lock": "spell-true-strike-lock",
         "default": false
     },
+    "warlock-many-heads": {
+        "title": "Eldritch Heads",
+        "description": "Once per turn, you can expend one head when you hit a creature with an attack to cause that creature to take extra psychic damage.",
+        "type": "bool",
+        "lock": "warlock-many-heads-lock",
+        "default": false
+    },
     "Chrono-Fungal-Surge": {
         "title": "Chrono-Fungal Surge",
         "description": "As a bonus action, you may flood your magic with unstable temporal energy. For 1 minute: Your spells deal +1d6 necrotic damage. At the end of your turn, roll a d6. On a 1, you suffer 1 level of exhaustion.",

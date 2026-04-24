@@ -181,6 +181,126 @@ function capitalizeDamageType(type) {
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
 }
 
+function countFeatureLimitedUseUnchecked(featureName) {
+    const normalize = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/s$/, "");
+    const target = normalize(featureName);
+    if (!target) return 0;
+
+    const headings = $(".ct-feature-snippet__heading, div[class*='styles_heading'], [class*='feature-snippet'] [class*='heading']");
+    const snippets = [];
+    for (let i = 0; i < headings.length; i++) {
+        const heading = headings.eq(i);
+        const headingText = heading.clone().children().remove().end().text().trim() || heading.text().trim();
+        const headingName = normalize(headingText);
+        if (!headingName || headingName !== target) continue;
+        const snippet = heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']");
+        if (!snippet.length) continue;
+        if (normalize(snippet.text()).includes("beseechpatron")) continue;
+        snippets.push(snippet[0]);
+    }
+
+    if (snippets.length === 0) {
+        $(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").each((_, el) => {
+            const snippetText = normalize($(el).text());
+            if (!snippetText.includes(target)) return;
+            if (snippetText.includes("beseechpatron")) return;
+            snippets.push(el);
+        });
+    }
+
+    const seenSnippets = new Set();
+    const seenControls = new Set();
+    let remaining = 0;
+
+    for (const snippetEl of snippets) {
+        if (!snippetEl || seenSnippets.has(snippetEl)) continue;
+        seenSnippets.add(snippetEl);
+        const snippet = $(snippetEl);
+
+        const usageRoots = [
+            snippet.find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.parent().find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.closest(".ct-actions-list__activatable, [class*='activatable']").find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first()
+        ].filter(root => root && root.length > 0);
+
+        for (const usages of usageRoots) {
+            const candidates = usages.find("input[type='checkbox']:not(:checked),input[type='radio']:not(:checked),[role='checkbox'][aria-checked='false'],[aria-checked='false'],[data-is-checked='false'],[aria-pressed='false'],button:not([disabled])[aria-label*='Use'],button:not([disabled])[class*='use'],button:not([disabled])[class*='usage']");
+            for (let i = 0; i < candidates.length; i++) {
+                const el = candidates.get(i);
+                if (seenControls.has(el)) continue;
+                seenControls.add(el);
+                remaining++;
+            }
+        }
+    }
+
+    return remaining;
+}
+
+function consumeFeatureLimitedUse(featureName) {
+    const normalize = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/s$/, "");
+    const target = normalize(featureName);
+    if (!target) return false;
+
+    const clickElement = (el) => {
+        if (!el || el.disabled) return false;
+        el.click();
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        return true;
+    };
+
+    const headings = $(".ct-feature-snippet__heading, div[class*='styles_heading'], [class*='feature-snippet'] [class*='heading']");
+    const snippets = [];
+    for (let i = 0; i < headings.length; i++) {
+        const heading = headings.eq(i);
+        const headingText = heading.clone().children().remove().end().text().trim() || heading.text().trim();
+        const headingName = normalize(headingText);
+        if (!headingName || headingName !== target) continue;
+        if (normalize(heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").text()).includes("beseechpatron")) continue;
+        const snippet = heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']");
+        if (snippet.length) snippets.push(snippet[0]);
+    }
+
+    // Fallback if no heading match was found.
+    if (snippets.length === 0) {
+        $(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").each((_, el) => {
+            const snippetText = normalize($(el).text());
+            if (!snippetText.includes(target)) return;
+            if (snippetText.includes("beseechpatron")) return;
+            snippets.push(el);
+        });
+    }
+
+    const seen = new Set();
+    for (const snippetEl of snippets) {
+        if (!snippetEl || seen.has(snippetEl)) continue;
+        seen.add(snippetEl);
+        const snippet = $(snippetEl);
+
+        const usageRoots = [
+            snippet.find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.parent().find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.closest(".ct-actions-list__activatable, [class*='activatable']").find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first()
+        ].filter(root => root && root.length > 0);
+
+        for (const usages of usageRoots) {
+            const inputUse = usages.find("input[type='checkbox']:not(:checked),input[type='radio']:not(:checked)").first();
+            if (inputUse.length > 0 && clickElement(inputUse.get(0))) return true;
+
+            const roleCheckbox = usages.find("[role='checkbox'][aria-checked='false']").first();
+            if (roleCheckbox.length > 0 && clickElement(roleCheckbox.get(0))) return true;
+
+            const ariaUnchecked = usages.find("[aria-checked='false'],[data-is-checked='false'],[aria-pressed='false']").first();
+            if (ariaUnchecked.length > 0 && clickElement(ariaUnchecked.get(0))) return true;
+
+            const buttonUse = usages.find("button:not([disabled])[aria-label*='Use'],button:not([disabled])[class*='use'],button:not([disabled])[class*='usage']").first();
+            if (buttonUse.length > 0 && clickElement(buttonUse.get(0))) return true;
+        }
+    }
+
+    return false;
+}
+
 async function queryDamageTypeForPlaceholder(name, damages, damage_types, placeholder_type, possible_types) {
     const idx = damage_types.findIndex(t => t === placeholder_type);
     if (idx === -1) return;
@@ -372,6 +492,17 @@ async function buildAttackRoll(character, attack_source, name, description, prop
         if ((character._settings) && (character._settings["Hunters-Mark"])) {
             damages.push("1d6");
             damage_types.push("Hunters Mark (Force)");
+        }
+        if ((character._settings) && (character._settings["warlock-many-heads"])&& character.hasClass("Warlock")) {
+            const isLocked = character.getSetting("warlock-many-heads-lock", false);
+            if(!isLocked) settings_to_change["warlock-many-heads"] = false;
+            const remainingHeads = countFeatureLimitedUseUnchecked("Eldritch Head");
+            if (remainingHeads > 0) {
+                var damage = parseInt(character._proficiency)+1;
+                damages.push("+" + damage);
+                damage_types.push("Eldritch Head");
+                consumeFeatureLimitedUse("Eldritch Head");
+            }
         }
         
         if ((character._settings) && (character._settings["Frigid-Explorer"])) {

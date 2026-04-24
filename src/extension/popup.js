@@ -245,6 +245,10 @@ function populateCharacter(response) {
             e = createHTMLOption("druid-potent-spellcasting", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("Eldritch Heads")) {
+            e = createHTMLOption("warlock-many-heads", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Hexblade’s Curse")) {
             e = createHTMLOption("warlock-hexblade-curse", false, character_settings);
             options.append(e);
