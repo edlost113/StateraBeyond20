@@ -525,7 +525,7 @@ async function buildAttackRoll(character, attack_source, name, description, prop
         }
         if (character.hasItemAttuned("Spine of Mol Krad", true)) {
             if ((character._settings) && (character._settings["Chrono-Fungal-Surge"])) {
-                damages.push("1d6");
+                damages.push("1d12");
                 damage_types.push("Spine of Mol Krad: Chrono-Fungal Surge (Necrotic)");
             }
             const num = parseInt(properties["cast-at"], 10) || 0; 
