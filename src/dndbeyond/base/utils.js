@@ -544,7 +544,14 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             }
         }
         if (roll_properties.name === "Water Bullet") {
-            const choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-10", "Range: 11-60", "Range: 61-90"]);
+            let choice;
+            if (character.hasFeat("Spell Sniper")) {
+                choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-60", "Range: 61-90", "Range: 91-150"]);
+            }
+            else {
+                choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-10", "Range: 11-60", "Range: 61-90"]);
+            }
+
             if (choice === null) return null; // Query was cancelled;
             const num = parseInt(properties["cast-at"], 10) || 0; 
             const choiceNum = parseInt(choice,  10) || 0;
