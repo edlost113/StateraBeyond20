@@ -1,3 +1,50 @@
+v2.20.1 (June 7th 2026)
+===
+
+Hi everyone,
+
+This time we're releasing a small hotfix for an issue introduced in the previous release. Users on Chrome who had duplicate rolls on Roll20 or who couldn't get their rolls sent to Roll20 after the extension is reloaded (such as after an update), should not be affected by those bugs anymore.
+
+Thank you to [@dmportella/Gothyl](https://github.com/dmportella) and to[@0xguy07](https://github.com/0xguy07) who fixed the issues in this hotfix.
+
+Have fun!
+
+
+v2.20.0 (June 4th 2026)
+===
+
+Hi everyone,
+
+Today's release adds a few small bugfixes to Beyond20, but also tackles a recent issue with the Roll20 website now using two slightly different URLs for the games.
+
+This should get rid of the warning users would see, when they access their games through the new URL, which prevented Beyond20 from sending rolls to Roll20. 
+
+You can read the full [Changelog](/Changelog#v2200) below to see all the changes included in this release.
+
+As usual, a big thank you to [@dmportella/Gothyl](https://github.com/dmportella) and to[@raystuart](https://github.com/raystuart) for their work on this release!
+Thank you as well to our generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
+
+Enjoy!
+
+v2.19.0 (April 12th 2026)
+===
+
+Hi everyone,
+
+Today, we're releasing v2.19.0, a small D&D Beyond-focused update with a mix of new features and bug fixes.
+
+This release adds support for the Blood Hunter's Crimson Rite feature, as well as support for conditional damage handling for Booming Blade and Green-Flame Blade on D&D Beyond.
+
+On the bugfix side, we've resolved several issues affecting the D&D Beyond Game Log and Roll20 to improve roll display and messaging, as well as we've fixed critical damage handling for Booming Blade and Green-Flame Blade.
+
+You can read the full [Changelog](/Changelog#v2190) to see all the changes included in this release.
+
+As usual, a big thank you to [@dmportella/Gothyl](https://github.com/dmportella) who made the release!
+Thank you as well to our generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
+
+Enjoy!
+
+
 v2.18.0 (March 24th 2026)
 ===
 

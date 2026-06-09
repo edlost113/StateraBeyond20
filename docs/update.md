@@ -1,6 +1,6 @@
 ## Beyond20 has just been installed or updated
 
-Congratulations! Beyond20 was just updated to the latest version : v2.18.0
+Congratulations! Beyond20 was just updated to the latest version : v2.20.1
 
 I hope you like the new features, and hopefully the killer feature you were waiting for was just added.
 
@@ -17,24 +17,32 @@ Thank you all for your support!
 
 # Release Notes
 
-v2.18.0 (March 24th 2026)
+v2.20.1 (June 7th 2026)
 ===
 
 Hi everyone,
 
-Today, we're releasing v2.18.0, a small update with a mix of new features and bug fixes for both Roll20 and D&D Beyond.
+This time we're releasing a small hotfix for an issue introduced in the previous release. Users on Chrome who had duplicate rolls on Roll20 or who couldn't get their rolls sent to Roll20 after the extension is reloaded (such as after an update), should not be affected by those bugs anymore.
 
-This release adds support for HP sync with the 2024 Roll20 character sheet templates, as well as support for the 2024 Healer feat and the bugbear's Surprise Attack racial feature on D&D Beyond.
+Thank you to [@dmportella/Gothyl](https://github.com/dmportella) and to[@0xguy07](https://github.com/0xguy07) who fixed the issues in this hotfix.
 
-On the bugfix side, we've resolved issues related to the new Digital Dice support, improved action matching for action customisation entries, and fixed Extras HP sync for familiars, summons, and similar creatures. We've also changed the way we integrate with D&D Beyond's Digital Dice to better support the feature and finally we added support for custom rolls when the digital dice is disabled.
+Have fun!
+=
+v2.20.0 (June 4th 2026)
+===
 
-You can read the full [Changelog](/Changelog#v2180) to see all the changes included in this release.
+Hi everyone,
 
-As usual, a big thank you to [@dmportella/Gothyl](https://github.com/dmportella), who handled this release in its entirety! He also received help from our first time contributors [@kristiandueholm](https://github.com/kristiandueholm), [@TyReg88](https://github.com/TyReg88), and [@nox404](https://github.com/nox-4O4), making this release the one with the most contributions from the community so far!
+Today's release adds a few small bugfixes to Beyond20, but also tackles a recent issue with the Roll20 website now using two slightly different URLs for the games.
+
+This should get rid of the warning users would see, when they access their games through the new URL, which prevented Beyond20 from sending rolls to Roll20. 
+
+You can read the full [Changelog](/Changelog#v2200) below to see all the changes included in this release.
+
+As usual, a big thank you to [@dmportella/Gothyl](https://github.com/dmportella) and to[@raystuart](https://github.com/raystuart) for their work on this release!
 Thank you as well to our generous [Patrons](https://patreon.com/kakaroto) and [Ko-fi/Github](/rations) supporters.
 
 Enjoy!
-
 
 ---
 
@@ -42,16 +50,19 @@ Click [here](/release_notes) for the full release notes from previous versions.
 
 # Changelog
 
-v2.18.0 (March 24th 2026)
+v2.20.1 (June 7th 2026)
 ===
-- **Feature**: *Roll20*: Add support for HP sync with the 2024 character sheet templates (by [@nox404](https://github.com/nox-4O4))
-- **Feature**: *dndbeyond*: Add support for 2024 Healer Feat (by [@kristiandueholm](https://github.com/kristiandueholm))
-- **Feature**: *dndbeyond*: Add support for bugbear Surprise Attack racial feature (by [@TyReg88](https://github.com/TyReg88))
-- **Feature**: *dndbeyond*: Use native dice for custom rolls when DDB's Digital Dice are disabled (by [@nox404](https://github.com/nox-4O4))
-- **Bugfix**: *dndbeyond*: Fix support for the new Digital Dice interface (by [@dmportella](https://github.com/dmportella))
-- **Bugfix**: *dndbeyond*: Fix support for actions with user customisations '*' (by [@kristiandueholm](https://github.com/kristiandueholm))
-- **Bugfix**: *dndbeyond*: Fix Extras HP Sync for familiars, summons etc (by [@dmportella](https://github.com/dmportella))
-- **Bugfix**: *dndbeyond*: Fix support for handling rolls made with DDB's Digital Dice (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *Roll20*: Fix duplicate messages in Chrome for Roll20 (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *Roll20*: Fix detection of some Roll20 tabs when reloading the extension while the Roll20 tab is already open (by [@0xguy07](https://github.com/0xguy07))
+
+v2.20.0 (June 4th 2026)
+===
+- **Feature**: *Roll20*: Add detection and support for the new Roll20 game URL without a trailing slash (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix support for new Elemental Affinity formula damage (by [@raystuart](https://github.com/raystuart))
+- **BugFix**: Fix dice formula parsing when it uses a unicode character for the negative sign (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix support for Versatile weapons and conditional damage for spells (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix display for Toll the Dead spell (by [@dmportella](https://github.com/dmportella))
+
 
 ---
 

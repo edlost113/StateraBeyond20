@@ -1,6 +1,7 @@
 var settings = getDefaultSettings()
 var fvtt_tabs = []
 var custom_tabs = []
+var roll20_tabs = []
 var tabRemovalTimers = {};
 var currentPermissions = {origins: []};
 var openedChangelog = false;
@@ -63,6 +64,13 @@ function sendMessageToRoll20(request, limit = null, failure = null) {
         const vtt = limit.vtt || "roll20"
         if (vtt == "roll20") {
             chrome.tabs.query({ "url": ROLL20_URL }, (tabs) => {
+                console.log("[Roll20] limit path: tabs from URL query:", tabs.length, "tracked roll20_tabs:", roll20_tabs.length);
+                // Also check tracked roll20 tabs (e.g., no-slash variant injected via permission flow)
+                for (let rtab of roll20_tabs) {
+                    if (!tabs.find(t => t.id === rtab.id)) {
+                        tabs.push(rtab);
+                    }
+                }
                 let found = filterVTTTab(request, limit, tabs, roll20Title)
                 if (failure)
                     failure(!found)
@@ -71,7 +79,17 @@ function sendMessageToRoll20(request, limit = null, failure = null) {
             failure(true)
         }
     } else {
-        sendMessageTo(ROLL20_URL, request, failure);
+        chrome.tabs.query({ "url": ROLL20_URL }, (tabs) => {
+            for (let rtab of roll20_tabs) {
+                if (!tabs.find(t => t.id === rtab.id)) {
+                    tabs.push(rtab);
+                }
+            }
+            for (let tab of tabs) {
+                sendMessageWithLog(tab.id, request)
+            }
+            if (failure) failure(tabs.length === 0)
+        });
     }
 }
 
@@ -158,8 +176,23 @@ function removeCustomTab(id) {
         }
     }
 }
+
+function isRoll20TabAdded(tab) {
+    return !!roll20_tabs.find(t => t.id === tab.id);
+}
+
+function addRoll20Tab(tab) {
+    if (isRoll20TabAdded(tab)) return;
+    roll20_tabs.push(tab);
+    console.log("Added ", tab.id, " to roll20 tabs.");
+}
+
+function removeRoll20Tab(id) {
+    roll20_tabs = roll20_tabs.filter(tab => tab.id !== id);
+}
+
 function onRollFailure(request, sendResponse) {
-    console.log("Failure to find a VTT")
+    console.log("Failure to find a VTT", request.action)
     chrome.tabs.query({ "url": FVTT_URL }, (tabs) => {
         let found = false
         for (let tab of tabs) {
@@ -179,10 +212,35 @@ function onRollFailure(request, sendResponse) {
                 "error": "Found a Foundry VTT tab that has not been activated. Please click on the Beyond20 icon in the browser's toolbar of that tab in order to give Beyond20 access."
             })
         } else {
-            sendResponse({
-                "success": false, "vtt": null, "request": request,
-                "error": "No VTT found that matches your settings. Open a VTT window, or check that the settings don't restrict access to a specific campaign."
-            })
+            // Check if there's a Roll20 editor tab without trailing slash
+            chrome.tabs.query({ "url": ROLL20_URL_NO_SLASH }, (roll20Tabs) => {
+                const roll20Tab = roll20Tabs.find(tab => isRoll20(tab.title));
+                if (roll20Tab) {
+                    // Check if permission has already been granted
+                    const hasRoll20Permission = currentPermissions.origins.some(pattern =>
+                        urlMatches("https://app.roll20.net/", pattern)
+                    );
+                    console.log("[Roll20] no-slash tab found:", roll20Tab.url, "hasPermission:", hasRoll20Permission);
+                    if (hasRoll20Permission) {
+                        addRoll20Tab(roll20Tab);
+                        sendMessageToRoll20(request, settings["vtt-tab"], (failed) => {
+                            if (!failed) {
+                                sendResponse({success: true, vtt: ["roll20"], error: null, request: request});
+                            } else {
+                                sendResponse({
+                                    "success": false, "vtt": null, "request": request,
+                                    "error": "Something went wrong with your roll, please try again."
+                                });
+                            }
+                        });
+                        return;
+                    }
+                }
+                sendResponse({
+                    "success": false, "vtt": null, "request": request,
+                    "error": "No VTT found that matches your settings. Open a VTT window, or check that the settings don't restrict access to a specific campaign."
+                })
+            });
         }
     });
 }
@@ -246,6 +304,9 @@ function onMessage(request, sender, sendResponse) {
         } else if ((isCustomDomainUrl(tab) || isSupportedVTT(tab)) && !isCustomTabAdded(tab)) {
             injectGenericSiteScripts([tab]);
         }
+        if (isRoll20(tab.title) && !isRoll20TabAdded(tab)) {
+            addRoll20Tab(tab);
+        }
         // maybe open the changelog
         if (!openedChangelog) {
             // Mark it true regardless of whether we opened it, so we don't check every time and avoid race conditions on setting save
@@ -270,6 +331,7 @@ function onMessage(request, sender, sendResponse) {
             // The previous listener, if there was one, would have been removed automatically at this point
             webNavigationReady = false;
         }
+
     } else if (request.action == "reload-me") {
         chrome.tabs.reload(sender.tab.id)
     } else if (request.action == "load-alertify") {
@@ -300,7 +362,6 @@ function injectRoll20Scripts(tabs, frame_id = 0) {
     insertCSSs(tabs, ["libs/css/alertify.css", "libs/css/alertify-themes/default.css", "libs/css/alertify-themes/beyond20.css", "dist/beyond20.css"], undefined, frame_id)
     executeScripts(tabs, ["libs/alertify.min.js", "libs/jquery-3.4.1.min.js", "dist/roll20.js"], undefined, frame_id)
 }
-
 function insertCSSs(tabs, css_files, callback, frame_id = 0) {
     for (let tab of tabs) {
         // Use new Manifest V3 scripting API 
@@ -349,10 +410,14 @@ function onTabsUpdated(id, changes, tab) {
         // 100ms should be fast enough for page script but not so slow that a reload on a localhost would
         // fail to remove/add the tab, as it should
         tabRemovalTimers[id] = setTimeout(() => removeCustomTab(id), 100);
+    } else if (isRoll20TabAdded(tab) &&
+        ((changes.url && !urlMatches(changes.url, ROLL20_URL) && !urlMatches(changes.url, ROLL20_URL_NO_SLASH)) ||
+         (changes["status"] == "loading"))) {
+        tabRemovalTimers[id] = setTimeout(() => removeRoll20Tab(id), 100);
     }
     /* Load Beyond20 on custom urls that have been added to our permissions */
     if (changes["status"] === "complete" &&
-        (isFVTT(tab.title) || isCustomDomainUrl(tab) || isSupportedVTT(tab))) {
+        (isFVTT(tab.title) || isRoll20(tab.title) || isCustomDomainUrl(tab) || isSupportedVTT(tab))) {
         // Cancel tab removal if we go back to complete within 100ms as the page script loads
         if (tabRemovalTimers[id]) {
             clearTimeout(tabRemovalTimers[id]);
@@ -365,7 +430,11 @@ function onTabsUpdated(id, changes, tab) {
             if (hasPermission) {
                 if (isFVTT(tab.title)) {
                     executeScripts([tab], ["dist/fvtt_test.js"]);
-                } else {
+                } else if (isRoll20(tab.title) && !urlMatches(tab.url, ROLL20_URL)) {
+                    console.log("[Roll20] Auto-injecting into no-slash tab:", tab.id, tab.url);
+                    injectRoll20Scripts([tab]);
+                    addRoll20Tab(tab);
+                } else if (!isRoll20(tab.title)) {
                     injectGenericSiteScripts([tab])
                 }
             }
@@ -377,6 +446,7 @@ function onTabsUpdated(id, changes, tab) {
 function onTabRemoved(id, info) {
     removeFVTTTab(id)
     removeCustomTab(id)
+    removeRoll20Tab(id)
 }
 
 function onPermissionsUpdated() {
@@ -407,9 +477,26 @@ chromeOrBrowser.permissions.getAll((permissions) => {
             // Skip if it's not a FVTT or custom tab
             const fvttTabs = tabs.filter(tab => isFVTT(tab.title));
             const customTabs = tabs.filter(tab => isCustomDomainUrl(tab) || isSupportedVTT(tab));
-            console.log("Permissions : ", pattern, fvttTabs, customTabs);
+            // No-slash Roll20 tabs (issue #1381): the manifest content_scripts
+            // pattern is *://app.roll20.net/editor/* so a tab at /editor with
+            // no trailing slash is not auto-injected. On Firefox the origin
+            // *://app.roll20.net/* permission is normally already granted, so
+            // inject explicitly here. Without this, users who had Roll20 open
+            // at /editor before the extension started (install, browser
+            // restart, MV3 service-worker wake) end up with an unwired tab
+            // and every roll falls through to "No VTT found". PR #1386 handles
+            // the on-navigation case via onTabsUpdated; this covers the
+            // startup-scan case it left open.
+            const roll20NoSlashTabs = tabs.filter(tab =>
+                isRoll20(tab.title) && !urlMatches(tab.url, ROLL20_URL)
+            );
+            console.log("Permissions : ", pattern, fvttTabs, customTabs, roll20NoSlashTabs);
             executeScripts(fvttTabs, ["dist/fvtt_test.js"]);
             injectGenericSiteScripts(customTabs);
+            if (roll20NoSlashTabs.length > 0) {
+                injectRoll20Scripts(roll20NoSlashTabs);
+                for (const tab of roll20NoSlashTabs) addRoll20Tab(tab);
+            }
         })
     }
 });

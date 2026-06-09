@@ -1,3 +1,25 @@
+v2.20.1 (June 7th 2026)
+===
+- **Bugfix**: *Roll20*: Fix duplicate messages in Chrome for Roll20 (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *Roll20*: Fix detection of some Roll20 tabs when reloading the extension while the Roll20 tab is already open (by [@0xguy07](https://github.com/0xguy07))
+
+v2.20.0 (June 4th 2026)
+===
+- **Feature**: *Roll20*: Add detection and support for the new Roll20 game URL without a trailing slash (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix support for new Elemental Affinity formula damage (by [@raystuart](https://github.com/raystuart))
+- **BugFix**: Fix dice formula parsing when it uses a unicode character for the negative sign (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix support for Versatile weapons and conditional damage for spells (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: Fix display for Toll the Dead spell (by [@dmportella](https://github.com/dmportella))
+
+
+v2.19.0 (April 12th 2026)
+===
+- **Feature**: *dndbeyond*: Add support for Crimson Rite feature from Blood Hunter (by [@dmportella](https://github.com/dmportella))
+- **Feature**: *dndbeyond*: Add support for Conditional Damage support Booming Blade and Green-Flame Blade (by [@dmportella](https://github.com/dmportella))
+- **BugFix**: *dndbeyond*: Fix support for Booming Blade and Green-Flame Blade critical Damage (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *dndbeyond*: Fix support for the D&D Beyond Game Log (by [@dmportella](https://github.com/dmportella))
+- **Bugfix**: *roll20*: Fix support for roll tool tip (by [@dmportella](https://github.com/dmportella))
+
 v2.18.0 (March 24th 2026)
 ===
 - **Feature**: *Roll20*: Add support for HP sync with the 2024 character sheet templates (by [@nox404](https://github.com/nox-4O4))

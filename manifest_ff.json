@@ -1,6 +1,7 @@
 {
+
 	"name": "Eddies Beyond 20",
-	"version": "2.12.3",
+	"version": "2.12.4",
 	"manifest_version": 2,
 	"description": "Integrates the D&D Beyond Character Sheets with Roll20 and Foundry VTT.",
 	"permissions": [
