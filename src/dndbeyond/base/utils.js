@@ -132,6 +132,32 @@ function damagesToCrits(character, damages) {
     return crits;
 }
 
+async function queryGenericChoice(name, damages, damage_types, possible_types) {
+    const damage_choices = possible_types;
+    const id = `dmg-${name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const choice = await dndbeyondDiceRoller.queryDamageType(name, possible_types, id);
+    if (choice === null) return null; // query was cancelled
+
+    // If possible_types is an array, the query returns the index (as a string).
+    // If it's an object, the query returns the selected key.
+    if (Array.isArray(possible_types)) {
+        const idx = parseInt(choice, 10);
+        const label = possible_types[idx];
+        const fallbackDamage = damages.length > 0 ? (damages[idx] !== undefined ? damages[idx] : damages[0]) : "";
+        // Replace contents with only the selected damage/type
+        damages.splice(0, damages.length, fallbackDamage);
+        damage_types.splice(0, damage_types.length, label);
+    } else {
+        // possible_types is an object mapping damage type -> damage formula
+        const dmgValue = damage_choices[choice];
+        // Replace contents with only the selected damage/type
+        damages.splice(0, damages.length, dmgValue);
+        damage_types.splice(0, damage_types.length, choice);
+    }
+
+    return choice;
+}
+
 async function queryDamageTypeFromArray(name, damages, damage_types, possible_types) {
     const damage_choices = {}
     let first_idx = -1;
@@ -153,6 +179,126 @@ async function queryDamageTypeFromArray(name, damages, damage_types, possible_ty
 function capitalizeDamageType(type) {
     if (!type) return type;
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+}
+
+function countFeatureLimitedUseUnchecked(featureName) {
+    const normalize = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/s$/, "");
+    const target = normalize(featureName);
+    if (!target) return 0;
+
+    const headings = $(".ct-feature-snippet__heading, div[class*='styles_heading'], [class*='feature-snippet'] [class*='heading']");
+    const snippets = [];
+    for (let i = 0; i < headings.length; i++) {
+        const heading = headings.eq(i);
+        const headingText = heading.clone().children().remove().end().text().trim() || heading.text().trim();
+        const headingName = normalize(headingText);
+        if (!headingName || headingName !== target) continue;
+        const snippet = heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']");
+        if (!snippet.length) continue;
+        if (normalize(snippet.text()).includes("beseechpatron")) continue;
+        snippets.push(snippet[0]);
+    }
+
+    if (snippets.length === 0) {
+        $(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").each((_, el) => {
+            const snippetText = normalize($(el).text());
+            if (!snippetText.includes(target)) return;
+            if (snippetText.includes("beseechpatron")) return;
+            snippets.push(el);
+        });
+    }
+
+    const seenSnippets = new Set();
+    const seenControls = new Set();
+    let remaining = 0;
+
+    for (const snippetEl of snippets) {
+        if (!snippetEl || seenSnippets.has(snippetEl)) continue;
+        seenSnippets.add(snippetEl);
+        const snippet = $(snippetEl);
+
+        const usageRoots = [
+            snippet.find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.parent().find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.closest(".ct-actions-list__activatable, [class*='activatable']").find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first()
+        ].filter(root => root && root.length > 0);
+
+        for (const usages of usageRoots) {
+            const candidates = usages.find("input[type='checkbox']:not(:checked),input[type='radio']:not(:checked),[role='checkbox'][aria-checked='false'],[aria-checked='false'],[data-is-checked='false'],[aria-pressed='false'],button:not([disabled])[aria-label*='Use'],button:not([disabled])[class*='use'],button:not([disabled])[class*='usage']");
+            for (let i = 0; i < candidates.length; i++) {
+                const el = candidates.get(i);
+                if (seenControls.has(el)) continue;
+                seenControls.add(el);
+                remaining++;
+            }
+        }
+    }
+
+    return remaining;
+}
+
+function consumeFeatureLimitedUse(featureName) {
+    const normalize = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/s$/, "");
+    const target = normalize(featureName);
+    if (!target) return false;
+
+    const clickElement = (el) => {
+        if (!el || el.disabled) return false;
+        el.click();
+        el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        return true;
+    };
+
+    const headings = $(".ct-feature-snippet__heading, div[class*='styles_heading'], [class*='feature-snippet'] [class*='heading']");
+    const snippets = [];
+    for (let i = 0; i < headings.length; i++) {
+        const heading = headings.eq(i);
+        const headingText = heading.clone().children().remove().end().text().trim() || heading.text().trim();
+        const headingName = normalize(headingText);
+        if (!headingName || headingName !== target) continue;
+        if (normalize(heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").text()).includes("beseechpatron")) continue;
+        const snippet = heading.closest(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']");
+        if (snippet.length) snippets.push(snippet[0]);
+    }
+
+    // Fallback if no heading match was found.
+    if (snippets.length === 0) {
+        $(".ct-feature-snippet,.ddbc-feature-snippet,[class*='feature-snippet']").each((_, el) => {
+            const snippetText = normalize($(el).text());
+            if (!snippetText.includes(target)) return;
+            if (snippetText.includes("beseechpatron")) return;
+            snippets.push(el);
+        });
+    }
+
+    const seen = new Set();
+    for (const snippetEl of snippets) {
+        if (!snippetEl || seen.has(snippetEl)) continue;
+        seen.add(snippetEl);
+        const snippet = $(snippetEl);
+
+        const usageRoots = [
+            snippet.find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.parent().find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first(),
+            snippet.closest(".ct-actions-list__activatable, [class*='activatable']").find(".ct-feature-snippet__limited-use-usages,[class*='limited-use-usages'],[class*='limitedUse'],[data-testid*='limited'],[data-testid*='usage']").first()
+        ].filter(root => root && root.length > 0);
+
+        for (const usages of usageRoots) {
+            const inputUse = usages.find("input[type='checkbox']:not(:checked),input[type='radio']:not(:checked)").first();
+            if (inputUse.length > 0 && clickElement(inputUse.get(0))) return true;
+
+            const roleCheckbox = usages.find("[role='checkbox'][aria-checked='false']").first();
+            if (roleCheckbox.length > 0 && clickElement(roleCheckbox.get(0))) return true;
+
+            const ariaUnchecked = usages.find("[aria-checked='false'],[data-is-checked='false'],[aria-pressed='false']").first();
+            if (ariaUnchecked.length > 0 && clickElement(ariaUnchecked.get(0))) return true;
+
+            const buttonUse = usages.find("button:not([disabled])[aria-label*='Use'],button:not([disabled])[class*='use'],button:not([disabled])[class*='usage']").first();
+            if (buttonUse.length > 0 && clickElement(buttonUse.get(0))) return true;
+        }
+    }
+
+    return false;
 }
 
 async function queryDamageTypeForPlaceholder(name, damages, damage_types, placeholder_type, possible_types) {
@@ -336,8 +482,88 @@ async function buildAttackRoll(character, attack_source, name, description, prop
     if (damages.length > 0) {
         roll_properties["damages"] = damages;
         roll_properties["damage-types"] = damage_types;
+         roll_properties["damages"] = damages;
+        roll_properties["damage-types"] = damage_types;
+
+        if ((character._settings) && (character._settings["Hex"])) {
+            damages.push("1d6");
+            damage_types.push("Hex (Necrotic)");
+        }
+        if ((character._settings) && (character._settings["Hunters-Mark"])) {
+            damages.push("1d6");
+            damage_types.push("Hunters Mark (Force)");
+        }
+        if ((character._settings) && (character._settings["warlock-many-heads"])&& character.hasClass("Warlock")) {
+            const isLocked = character.getSetting("warlock-many-heads-lock", false);
+            if(!isLocked) settings_to_change["warlock-many-heads"] = false;
+            const remainingHeads = countFeatureLimitedUseUnchecked("Eldritch Head");
+            if (remainingHeads > 0) {
+                var damage = parseInt(character._proficiency)+1;
+                damages.push("+" + damage);
+                damage_types.push("Eldritch Head");
+                consumeFeatureLimitedUse("Eldritch Head");
+            }
+        }
         
-        if (roll_properties.name === "Chromatic Orb") {
+        if ((character._settings) && (character._settings["Frigid-Explorer"])) {
+            const lvl = character.getClassLevel("Ranger");
+            if (lvl > 10)
+                damages.push("1d6");
+            else
+                damages.push("1d4");
+            damage_types.push("Polar Strikes (Cold)");
+
+            const isLocked = character.getSetting("frigidexplorer-lock", false);
+            if(!isLocked) settings_to_change["Frigid-Explorer"] = false;
+        }
+
+        if (character.hasItemAttuned("Eldritch Claw Tattoo", true)) {
+            if ((character._settings) && (character._settings["Eldritch-Claw-Tattoo"])) {
+                damages.push("1d6");
+                damage_types.push("Force (Eldritch Claw Tattoo)");
+            }
+        }
+        if (character.hasItemAttuned("Spine of Mol Krad", true)) {
+            if ((character._settings) && (character._settings["Chrono-Fungal-Surge"])) {
+                damages.push("1d12");
+                damage_types.push("Spine of Mol Krad: Chrono-Fungal Surge (Necrotic)");
+            }
+            const num = parseInt(properties["cast-at"], 10) || 0; 
+            let counter = 1;
+
+            for (let i = 0; i < num; i++) {
+                counter++;
+            }
+            
+            if (damage_types.some(item => item.includes('Necrotic'))) {
+                damages.push(counter.toString());
+                damage_types.push("Spine of Mol Krad (Necrotic)");
+            } else if (damage_types.some(item => item.includes('Psychic'))) {
+                damages.push(counter.toString());
+                damage_types.push("Spine of Mol Krad (Psychic)");
+            }
+        }
+        if (roll_properties.name === "Water Bullet") {
+            let choice;
+            if (character.hasFeat("Spell Sniper")) {
+                choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-60", "Range: 61-90", "Range: 91-150"]);
+            }
+            else {
+                choice = await queryGenericChoice(roll_properties.name, damages, damage_types, ["Range: 1-10", "Range: 11-60", "Range: 61-90"]);
+            }
+
+            if (choice === null) return null; // Query was cancelled;
+            const num = parseInt(properties["cast-at"], 10) || 0; 
+            const choiceNum = parseInt(choice,  10) || 0;
+            let counter = num - 1;
+            if (choiceNum > 0) {
+                if (counter > 0){
+                    damages.push("+" + counter + "d6");
+                    damage_types.push("Bludgeoning (Water Bullet)");
+                }
+            }
+        }
+        else if (roll_properties.name === "Chromatic Orb") {
             const choice = await queryDamageTypeFromArray(roll_properties.name, damages, damage_types, ["Acid", "Cold", "Fire", "Lightning", "Poison", "Thunder"]);
             if (choice === null) return null; // Query was cancelled;
         } else if (roll_properties.name === "Sorcerous Burst") {

@@ -76,4 +76,3 @@ const BUTTON_STYLE_CSS = `
     vertical-align: middle;
 }
 `;
-

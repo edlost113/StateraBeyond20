@@ -1,3 +1,4 @@
+
 if (!window.__beyond20_mb2_initialized__) {
     window.__beyond20_mb2_initialized__ = true;
 

@@ -1,6 +1,7 @@
 {
-	"name": "Beyond 20",
-	"version": "2.20.1",
+
+	"name": "Eddies Beyond 20",
+	"version": "2.12.4",
 	"manifest_version": 2,
 	"description": "Integrates the D&D Beyond Character Sheets with Roll20 and Foundry VTT.",
 	"permissions": [
@@ -8,7 +9,8 @@
 		"tabs",
 		"storage",
 		"*://beyond20.kicks-ass.org/roll",
-		"*://app.roll20.net/editor/",
+		"*://app.roll20.net/editor/*",
+		"*://app.roll20.net/editor",
 		"*://*.dndbeyond.com/*",
 		"*://*.forge-vtt.com/game"
 	],
@@ -18,7 +20,7 @@
 	],
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "beyond20@kakaroto.homelinux.net"
+			"id": "beyond20@edlost.com"
 		}
 	},
 	"icons": {
@@ -183,7 +185,8 @@
 		},
 		{
 			"matches": [
-				"*://app.roll20.net/editor/*"
+				"*://app.roll20.net/editor/*",
+				"*://app.roll20.net/editor"
 			],
 			"css": [
 				"libs/css/alertify.css",
