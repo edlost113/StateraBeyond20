@@ -504,7 +504,11 @@ async function buildAttackRoll(character, attack_source, name, description, prop
                 consumeFeatureLimitedUse("Eldritch Head");
             }
         }
-        
+        if ((character._settings) && (character.hasClassFeature("Aura of Fraternity"))) {
+            damages.push("1d4");
+            damage_types.push("Aura of Fraternity");
+        }
+
         if ((character._settings) && (character._settings["Frigid-Explorer"])) {
             const lvl = character.getClassLevel("Ranger");
             if (lvl > 10)
