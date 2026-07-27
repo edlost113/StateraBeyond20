@@ -3427,6 +3427,56 @@ function handleSpellIntegratedDie(button) {
     return true;
 }
 
+function rollAbilityCheckFromRow(row) {
+    const $row = $(row);
+
+    let ability_name = $row
+        .find(".ct-ability-summary__heading .ct-ability-summary__label, .ddbc-ability-summary__heading .ddbc-ability-summary__label")
+        .first()
+        .text()
+        .trim();
+
+    let ability = normalizeAbilityName(ability_name);
+
+    if (!ability) {
+        const abbr = $row
+            .find(".ct-ability-summary__heading .ct-ability-summary__abbr, .ddbc-ability-summary__heading .ddbc-ability-summary__abbr")
+            .first()
+            .text()
+            .trim()
+            .toUpperCase();
+
+        if (abbr) {
+            ability = normalizeAbilityName(abbr);
+            if (!ability_name) {
+                ability_name = abbreviationToAbility(abbr);
+            }
+        }
+    }
+
+    const modifier = $row.find(
+        ".ct-ability-summary__primary .ct-signed-number, " +
+        ".ct-ability-summary__primary .ddbc-signed-number, " +
+        ".ct-ability-summary__primary span[class*='styles_numberDisplay'], " +
+        ".ddbc-ability-summary__primary .ct-signed-number, " +
+        ".ddbc-ability-summary__primary .ddbc-signed-number, " +
+        ".ddbc-ability-summary__primary span[class*='styles_numberDisplay'], " +
+        ".ct-ability-summary__secondary .ct-signed-number, " +
+        ".ct-ability-summary__secondary .ddbc-signed-number, " +
+        ".ct-ability-summary__secondary span[class*='styles_numberDisplay'], " +
+        ".ddbc-ability-summary__secondary .ct-signed-number, " +
+        ".ddbc-ability-summary__secondary .ddbc-signed-number, " +
+        ".ddbc-ability-summary__secondary span[class*='styles_numberDisplay']"
+    ).first().text().replace(/\s+/g, "");
+
+    return applyAbilityOrSavingThrowEffects({
+        rollType: "ability",
+        ability_name,
+        ability,
+        modifier
+    });
+}
+
 function handleAbilityIntegratedDie(target) {
     const row = target.closest(".ct-ability-summary, .ddbc-ability-summary");
     if (!row) return false;
