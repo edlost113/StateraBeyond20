@@ -508,7 +508,14 @@ async function buildAttackRoll(character, attack_source, name, description, prop
             damages.push("1d4");
             damage_types.push("Aura of Fraternity");
         }
-
+        if ((character._settings) && (character.hasClassFeature("Aura of War"))) {
+            damages.push("1d4");
+            damage_types.push("Aura of War");
+        }
+        if ((character._settings) && (character.hasClassFeature("Perfect Weapon"))) {
+            damages.push("1d6");
+            damage_types.push("Elemental Strike");
+        }
         if ((character._settings) && (character._settings["Frigid-Explorer"])) {
             const lvl = character.getClassLevel("Ranger");
             if (lvl > 10)
