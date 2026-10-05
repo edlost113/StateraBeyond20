@@ -326,7 +326,11 @@ function applyAbilityOrSavingThrowEffects({ rollType, ability_name, ability, mod
             character.hasClassFeature("Bladesong") &&
             character.getSetting("wizard-bladesong", false);
 
-        if (has_warcaster || has_bladesong) {
+        const has_conjurationAdept =
+            character.hasFeat("Conjuration Adept", true);
+
+
+        if (has_warcaster || has_bladesong || has_conjurationAdept) {
             const confirmation = has_bladesong
                 ? 'Your Bladesong whispers: "Is this a Concentration Check?"'
                 : "Is this a Concentration Check?";
@@ -339,6 +343,15 @@ function applyAbilityOrSavingThrowEffects({ rollType, ability_name, ability, mod
                     modifier = mod >= 0 ? `+${mod}` : `${mod}`;
                     roll_properties.modifier = modifier;
                     addEffect(roll_properties, "Bladesong");
+                }
+
+                if (has_conjurationAdept) {
+                    const intelligence = character.getAbility("INT") || { mod: 0 };
+                    const bladesongMod = Math.max((parseInt(intelligence.mod) || 0), 1);
+                    mod = parseInt(modifier) + bladesongMod;
+                    modifier = mod >= 0 ? `+${mod}` : `${mod}`;
+                    roll_properties.modifier = modifier;
+                    addEffect(roll_properties, "Conjuration Adept");
                 }
 
                 if (has_warcaster) {
