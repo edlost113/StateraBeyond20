@@ -585,7 +585,20 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
                 damage_types.push("Symbiotic Entity");
         }
     }
-    
+
+    if (character.hasClass("Pugilist")){
+        // Pugilist: Fists of Faith
+        if ((character.hasClassFeature("Channel Divinity: Fists of Faith") &&
+            character.getSetting("pugilist-fists-of-faith", true) ) ) {
+            
+            damages.push("1d4");
+            damage_types.push("Radiant");
+
+            damages.push("2d4");
+            damage_types.push("Radiant Fiend or Undead.");
+        }
+    }
+        //pugilist-fists-of-faith
     if (character.hasClass("Paladin")) {
         // Paladin: Improved Divine Smite
         // Radiant Strikes works on melee and unarmed strikes, while Improved Divine Smite

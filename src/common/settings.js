@@ -678,6 +678,12 @@ const character_settings = {
         "type": "bool",
         "default": true
     },
+    "pugilist-fists-of-faith": {
+        "title": "Pugilist: Fists of Faith",
+        "description": "As a Bonus Action, you can imbue your fists with righteous fury. For the next minute, your Unarmed Strikes deal an extra 1d4 Radiant damage or 2d4 if the target is a Fiend or Undead.",
+        "type": "bool",
+        "default": true
+    },
     "paladin-radiant-strikes": {
         "title": "Paladin: Radiant Strikes",
         "description": "Roll an extra 1d8 radiant damage whenever you hit with a melee weapon or an unarmed strike",

@@ -234,7 +234,10 @@ function populateCharacter(response) {
             e = createHTMLOption("paladin-improved-divine-smite", false, character_settings);
             options.append(e);
         }
-
+        if (response["class-features"].includes("Channel Divinity: Fists of Faith")) {
+            e = createHTMLOption("pugilist-fists-of-faith", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Radiant Strikes")) {
             e = createHTMLOption("paladin-radiant-strikes", false, character_settings);
             options.append(e);
