@@ -597,6 +597,13 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damages.push("2d4");
             damage_types.push("Radiant Fiend or Undead.");
         }
+        if ((character.hasClassFeature("School of Hard Knocks") &&
+            character.getSetting("pugilist-school-hard-knocks", true) ) ) {
+            
+            damages.push("1d12");
+            damage_types.push("Bludeoning");
+            settings_to_change["pugilist-school-hard-knocks"] = false;
+        }
     }
         //pugilist-fists-of-faith
     if (character.hasClass("Paladin")) {

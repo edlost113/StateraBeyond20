@@ -238,6 +238,10 @@ function populateCharacter(response) {
             e = createHTMLOption("pugilist-fists-of-faith", false, character_settings);
             options.append(e);
         }
+        if (response["class-features"].includes("School of Hard Knocks")) {
+            e = createHTMLOption("pugilist-school-hard-knocks", false, character_settings);
+            options.append(e);
+        }
         if (response["class-features"].includes("Radiant Strikes")) {
             e = createHTMLOption("paladin-radiant-strikes", false, character_settings);
             options.append(e);

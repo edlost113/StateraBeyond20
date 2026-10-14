@@ -678,11 +678,17 @@ const character_settings = {
         "type": "bool",
         "default": true
     },
+    "pugilist-school-hard-knocks":{
+        "title": "Pugilist: School of Hard Knocks",
+        "description": "Once per turn, you can deal an extra 1d12 damage when you hit with an Unarmed Strike or attack with a Pugilist weapon. This damage is the same type dealt by the weapon or Unarmed Strike..",
+        "type": "bool",
+        "default": false
+    },
     "pugilist-fists-of-faith": {
         "title": "Pugilist: Fists of Faith",
         "description": "As a Bonus Action, you can imbue your fists with righteous fury. For the next minute, your Unarmed Strikes deal an extra 1d4 Radiant damage or 2d4 if the target is a Fiend or Undead.",
         "type": "bool",
-        "default": true
+        "default": false
     },
     "paladin-radiant-strikes": {
         "title": "Paladin: Radiant Strikes",
