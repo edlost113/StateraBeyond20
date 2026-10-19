@@ -632,12 +632,10 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
 
         if (character.hasFeat("Boon of the Amethyst Dragon"))
         {
-            console.log(action_name);
-
-            if (action_name && action_name.toLowerCase() === "bite") {
+            /*if (action_name && action_name.toLowerCase() === "bite") {
                 damages.push("2d8");
                 damage_types.push("Dragon Force");
-            }
+            }*/
         }
     }
 
