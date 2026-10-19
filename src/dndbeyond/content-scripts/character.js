@@ -629,6 +629,16 @@ function handleSpecialMeleeAttacks(damages=[], damage_types=[], properties, sett
             damages.push("1d8");
             damage_types.push("Primal Strike");
         }
+
+        if (character.hasFeat("Boon of the Amethyst Dragon"))
+        {
+            console.log(action_name);
+
+            if (action_name && action_name.toLowerCase() === "bite") {
+                damages.push("2d8");
+                damage_types.push("Dragon Force");
+            }
+        }
     }
 
     if (character.hasClass("Wizard")) {
